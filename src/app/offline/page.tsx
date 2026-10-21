@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { WifiOff } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
@@ -14,7 +15,7 @@ export default function OfflinePage() {
         Jenny needs an internet connection to load posts and messages. Nothing you were
         writing has been sent. Reconnect and try again.
       </p>
-      <a href="/" className="btn btn-primary">Try again</a>
+      <Link href="/" className="btn btn-primary">Try again</Link>
     </main>
   );
 }
