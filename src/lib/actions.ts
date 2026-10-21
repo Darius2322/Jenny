@@ -83,6 +83,33 @@ export async function removeAvatar() {
   revalidatePath("/", "layout");
 }
 
+export async function updateCover(_: ActionState, formData: FormData): Promise<ActionState> {
+  const file = formData.get("cover");
+  if (!(file instanceof File)) return { error: "Choose an image first." };
+  const { supabase, user } = await requireUser();
+  const { data: before } = await supabase.from("profiles").select("cover_path").eq("id", user.id).single();
+  const res = await uploadImage(supabase, "covers", user.id, file, 4 * 1024 * 1024);
+  if ("error" in res) return { error: res.error };
+  const { error } = await supabase.from("profiles").update({ cover_path: res.path }).eq("id", user.id);
+  if (error) {
+    await supabase.storage.from("covers").remove([res.path]);
+    return { error: friendly(error.message) };
+  }
+  const old = before?.cover_path as string | null | undefined;
+  if (old && old.startsWith(`${user.id}/`)) await supabase.storage.from("covers").remove([old]);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function removeCover() {
+  const { supabase, user } = await requireUser();
+  const { data } = await supabase.from("profiles").select("cover_path").eq("id", user.id).single();
+  await supabase.from("profiles").update({ cover_path: null }).eq("id", user.id);
+  const old = data?.cover_path as string | null | undefined;
+  if (old && old.startsWith(`${user.id}/`)) await supabase.storage.from("covers").remove([old]);
+  revalidatePath("/", "layout");
+}
+
 export async function startConversation(formData: FormData) {
   const target = uuid.safeParse(formData.get("targetId"));
   if (!target.success) return;

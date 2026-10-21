@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { BUSINESS_CATEGORIES } from "@/lib/business";
+import { uploadImage } from "@/lib/upload";
 
 export type BizState = { error?: string; ok?: boolean } | undefined;
 
@@ -127,4 +128,38 @@ export async function setEnquiryStatus(formData: FormData) {
   const { supabase } = await requireUser();
   await supabase.from("business_enquiries").update({ status: status.data }).eq("id", id.data);
   revalidatePath("/business");
+}
+
+export async function updateBusinessLogo(_: BizState, formData: FormData): Promise<BizState> {
+  const id = z.string().uuid().safeParse(formData.get("businessId"));
+  const file = formData.get("logo");
+  if (!id.success) return { error: "Invalid business." };
+  if (!(file instanceof File)) return { error: "Choose an image first." };
+  const { supabase } = await requireUser();
+  // Storage policy: only members of this business can write into its folder.
+  const { data: before } = await supabase.from("businesses").select("logo_path").eq("id", id.data).single();
+  const res = await uploadImage(supabase, "business-logos", id.data, file, 2 * 1024 * 1024);
+  if ("error" in res) return { error: res.error };
+  const { error } = await supabase.from("businesses").update({ logo_path: res.path }).eq("id", id.data);
+  if (error) {
+    await supabase.storage.from("business-logos").remove([res.path]);
+    return { error: friendly(error.message) };
+  }
+  const old = before?.logo_path as string | null | undefined;
+  if (old && old.startsWith(`${id.data}/`)) await supabase.storage.from("business-logos").remove([old]);
+  revalidatePath("/business");
+  revalidatePath("/businesses", "layout");
+  return { ok: true };
+}
+
+export async function removeBusinessLogo(formData: FormData) {
+  const id = z.string().uuid().safeParse(formData.get("businessId"));
+  if (!id.success) return;
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("businesses").select("logo_path").eq("id", id.data).single();
+  await supabase.from("businesses").update({ logo_path: null }).eq("id", id.data);
+  const old = data?.logo_path as string | null | undefined;
+  if (old && old.startsWith(`${id.data}/`)) await supabase.storage.from("business-logos").remove([old]);
+  revalidatePath("/business");
+  revalidatePath("/businesses", "layout");
 }

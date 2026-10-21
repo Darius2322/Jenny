@@ -4,6 +4,7 @@ import { Search, MapPin, BadgeCheck, Store } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { BUSINESS_CATEGORIES, likeEscape, type Business } from "@/lib/business";
 import { DiscoverTabs } from "@/components/DiscoverTabs";
+import { BusinessLogo } from "@/components/BusinessLogo";
 
 export const metadata: Metadata = { title: "Businesses", robots: { index: false } };
 
@@ -15,14 +16,14 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
   const supabase = await createClient();
   let query = supabase
     .from("businesses")
-    .select("id, handle, name, description, category, location_text, verification_status")
+    .select("id, handle, name, description, category, location_text, logo_path, verification_status")
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(30);
   if (category) query = query.eq("category", category);
   if (q.length >= 2) query = query.ilike("name", `%${likeEscape(q)}%`);
   const { data, error } = await query;
-  const list = (data ?? []) as Pick<Business, "id" | "handle" | "name" | "description" | "category" | "location_text" | "verification_status">[];
+  const list = (data ?? []) as Pick<Business, "id" | "handle" | "name" | "description" | "category" | "location_text" | "logo_path" | "verification_status">[];
 
   return (
     <>
@@ -53,7 +54,9 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
       <ul>
         {list.map((b) => (
           <li key={b.id} className="border-b border-line dark:border-white/10">
-            <Link href={`/businesses/${b.handle}`} className="block px-4 py-4 hover:bg-surface dark:hover:bg-white/5">
+            <Link href={`/businesses/${b.handle}`} className="flex gap-3 px-4 py-4 hover:bg-surface dark:hover:bg-white/5">
+              <BusinessLogo name={b.name} path={b.logo_path} size={48} />
+              <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 font-semibold">
                 {b.name}
                 {b.verification_status === "verified" && <BadgeCheck size={16} className="text-brand-dark dark:text-brand" aria-label="Verified business" />}
@@ -63,6 +66,7 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
                 {b.location_text && <span className="inline-flex items-center gap-1"><MapPin size={13} aria-hidden="true" />{b.location_text}</span>}
               </span>
               {b.description && <span className="mt-1.5 line-clamp-2 block text-sm">{b.description}</span>}
+              </span>
             </Link>
           </li>
         ))}

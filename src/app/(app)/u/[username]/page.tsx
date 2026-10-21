@@ -7,6 +7,8 @@ import { queryPosts, PAGE_SIZE } from "@/lib/posts";
 import { toggleFollow, toggleBlock, startConversation } from "@/lib/actions";
 import { Avatar } from "@/components/Avatar";
 import { PostCard } from "@/components/PostCard";
+import { coverUrl } from "@/lib/media";
+import Image from "next/image";
 
 export const metadata: Metadata = { title: "Profile", robots: { index: false } };
 
@@ -22,7 +24,7 @@ export default async function ProfilePage({
   // RLS decides visibility: a private or blocking profile returns no row, so we show "not found".
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_path, bio, location_text, website, interests, visibility, created_at")
+    .select("id, username, display_name, avatar_path, cover_path, bio, location_text, website, interests, visibility, created_at")
     .eq("username", username.toLowerCase())
     .maybeSingle();
 
@@ -64,6 +66,9 @@ export default async function ProfilePage({
 
   return (
     <>
+      {coverUrl(profile.cover_path) && (
+        <Image src={coverUrl(profile.cover_path) as string} alt="" width={900} height={300} priority className="h-32 w-full object-cover sm:h-40" />
+      )}
       <section className="border-b border-line px-4 py-6 dark:border-white/10">
         <div className="flex items-start justify-between gap-3">
           <Avatar name={profile.display_name} path={profile.avatar_path} size={72} />

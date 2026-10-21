@@ -10,9 +10,9 @@ function sniff(b: Uint8Array): { mime: string; ext: string } | null {
 
 export type UploadResult = { path: string; mime: string } | { error: string };
 
-/** Uploads to `<bucket>/<userId>/<random>.<ext>`: a generated path, never user-controlled. Storage policies re-check ownership. */
+/** Uploads to `<bucket>/<folder>/<random>.<ext>` (folder = user id, or business id for logos): a generated path, never user-controlled. Storage policies re-check ownership. */
 export async function uploadImage(
-  supabase: SupabaseClient, bucket: "avatars" | "covers" | "post-media", userId: string, file: File, maxBytes: number,
+  supabase: SupabaseClient, bucket: "avatars" | "covers" | "post-media" | "business-logos", userId: string, file: File, maxBytes: number,
 ): Promise<UploadResult> {
   if (file.size === 0) return { error: "Choose an image first." };
   if (file.size > maxBytes) return { error: `Image is too large (max ${Math.round(maxBytes / 1048576)} MB).` };

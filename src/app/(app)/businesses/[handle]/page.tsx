@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { reportContent } from "@/lib/actions";
 import type { Business, Listing } from "@/lib/business";
 import { EnquiryForm } from "@/components/EnquiryForm";
+import { BusinessLogo } from "@/components/BusinessLogo";
 
 export const metadata: Metadata = { title: "Business", robots: { index: false } };
 
@@ -17,7 +18,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ handl
 
   // RLS: only active businesses (or ones you manage) are returned.
   const { data } = await supabase.from("businesses")
-    .select("id, handle, name, description, category, location_text, website, public_email, public_phone, verification_status, status, created_at")
+    .select("id, handle, name, description, category, location_text, logo_path, website, public_email, public_phone, verification_status, status, created_at")
     .eq("handle", handle.toLowerCase()).maybeSingle();
   const b = data as Business | null;
   if (!b) notFound();
@@ -38,7 +39,8 @@ export default async function BusinessPage({ params }: { params: Promise<{ handl
 
       <section className="border-b border-line px-4 py-6 dark:border-white/10">
         {b.status !== "active" && <p role="status" className="mb-4 rounded-xl bg-surface p-3 text-sm dark:bg-white/10">Only you and your team can see this page until it has been reviewed.</p>}
-        <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+        <BusinessLogo name={b.name} path={b.logo_path} size={72} />
+        <h1 className="mt-3 flex items-center gap-2 text-2xl font-extrabold tracking-tight">
           {b.name}
           {b.verification_status === "verified" && <BadgeCheck size={22} className="text-brand-dark dark:text-brand" aria-label="Verified business" />}
         </h1>

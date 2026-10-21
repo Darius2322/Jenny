@@ -15,7 +15,8 @@ Mobile-first social platform (Kenya first). Next.js (App Router) + TypeScript + 
 | Businesses: directory with search + category filter, public business page with listings and enquiry form, owner dashboard (create/edit profile, add/publish/delete listings, enquiries inbox), report-as-fraud | **Written, NOT built or run.** |
 | News page (published stories with honest labels, source links, story-tip form; nothing auto-publishes) | **Written, NOT built or run.** |
 | Admin app (`admin/`, separate Next.js app): staff sign-in + mandatory authenticator-app 2FA, overview counts, reports queue (hide/remove/dismiss), business approval/suspension/verification, news review, user suspension, audit log | **Written, NOT built or run, NOT security-tested.** Needs your `service_role` key. |
-| Cover photos, business logos, community topics UI, comment replies, account deletion handling, dating | Not started (tables exist). |
+| Comment replies (one level), profile cover photos, business logo uploads | **Written, NOT built or run.** |
+| Community topics UI, account deletion handling, dating | Not started (tables exist). |
 
 Partial check done: a TypeScript pass over `src/` with stubbed Next/React/Supabase/zod types found no errors in the project's own code. That is NOT a build: it cannot catch wrong library usage, Tailwind/ESLint issues, or runtime bugs. Run the real build first.
 
@@ -98,4 +99,4 @@ Roles: `system_owner` and `administrator` (everything, including audit log, rein
 
 Admin limitations: no UI to add/remove staff (use SQL), no account-deletion handling, no appeals queue, no way to restore hidden content from the UI, suspension does not sign the user out of existing sessions (it blocks posting/visibility via database rules), no private-message access by design. Enable "Auth > Attack protection" (CAPTCHA) and consider restricting the admin domain by IP/firewall.
 
-Business limitations: businesses start `pending_review` and are approved in the admin app; one business per owner in the UI, no logo upload yet, no team-member invites yet (the database supports managers), enquiries notify the team in-app only (no email yet).
+Business limitations: businesses start `pending_review` and are approved in the admin app; one business per owner in the UI, no team-member invites yet (the database supports managers), enquiries notify the team in-app only (no email yet).

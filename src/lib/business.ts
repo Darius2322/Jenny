@@ -6,7 +6,7 @@ export const BUSINESS_CATEGORIES = [
 
 export type Business = {
   id: string; handle: string; name: string; description: string | null; category: string;
-  location_text: string | null; website: string | null; public_email: string | null; public_phone: string | null;
+  location_text: string | null; logo_path?: string | null; website: string | null; public_email: string | null; public_phone: string | null;
   verification_status: string; status: string; created_at: string;
 };
 

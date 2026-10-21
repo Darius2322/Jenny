@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { setListingStatus, deleteListing, setEnquiryStatus } from "@/lib/business-actions";
 import type { Business, Listing, Enquiry } from "@/lib/business";
 import { BusinessForm } from "@/components/BusinessForm";
+import { BusinessLogoForm } from "@/components/BusinessLogoForm";
 import { ListingForm } from "@/components/ListingForm";
 import { timeAgo } from "@/lib/posts";
 
@@ -35,7 +36,7 @@ export default async function BusinessDashboard() {
   }
 
   const [{ data: bizRow }, { data: listingRows }, { data: enquiryRows }] = await Promise.all([
-    supabase.from("businesses").select("id, handle, name, description, category, location_text, website, public_email, public_phone, verification_status, status, created_at").eq("id", businessId).single(),
+    supabase.from("businesses").select("id, handle, name, description, category, location_text, logo_path, website, public_email, public_phone, verification_status, status, created_at").eq("id", businessId).single(),
     supabase.from("business_listings").select("id, business_id, title, description, price_text, kind, status").eq("business_id", businessId).order("created_at", { ascending: false }),
     supabase.from("business_enquiries").select("id, sender_id, listing_id, message, status, created_at").eq("business_id", businessId).order("created_at", { ascending: false }).limit(50),
   ]);
@@ -59,6 +60,8 @@ export default async function BusinessDashboard() {
         <p role="status" className="mt-2 rounded-xl bg-surface p-3 text-sm dark:bg-white/10">{statusText[b.status] ?? b.status}</p>
         <Link href={`/businesses/${b.handle}`} className="btn btn-secondary mt-3">Preview public profile</Link>
       </div>
+
+      <BusinessLogoForm businessId={b.id} name={b.name} path={b.logo_path ?? null} />
 
       <section aria-labelledby="enq-heading" className="mt-6 border-t border-line px-4 py-5 dark:border-white/10">
         <h2 id="enq-heading" className="text-lg font-bold">Enquiries {newCount > 0 && <span className="ml-1 rounded-full bg-brand px-2 py-0.5 text-xs text-ink">{newCount} new</span>}</h2>
