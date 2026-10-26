@@ -10,7 +10,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   return (
     <AuthForm
-      title="Sign in to Jenny"
+      title="Welcome back"
+      subtitle="Sign in to your Jenny account"
       submitLabel="Sign in"
       action={login}
       hidden={{ next: safeNext(sp.next) }}
@@ -21,8 +22,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       ]}
       footer={
         <>
-          <p><Link href="/forgot-password" className="underline">Forgot your password?</Link></p>
-          <p className="mt-2">New to Jenny? <Link href="/register" className="font-semibold text-ink underline dark:text-white">Create an account</Link></p>
+          <p><Link href="/forgot-password" className="font-semibold text-brand-dark underline dark:text-brand">Forgot your password?</Link></p>
+          <p className="mt-2">New to Jenny? <Link href="/register" className="font-semibold text-brand-dark underline dark:text-brand">Create an account</Link></p>
         </>
       }
     />

@@ -30,7 +30,7 @@ export function ListingForm({ businessId }: { businessId: string }) {
         <label htmlFor="l-desc" className="label">Description</label>
         <textarea id="l-desc" name="description" rows={3} maxLength={1500} className="field py-3" />
       </div>
-      <label className="flex min-h-[44px] items-center gap-3 text-sm"><input type="checkbox" name="publish" className="h-4 w-4 accent-[#00BFA6]" /> Publish now (otherwise saved as a draft)</label>
+      <label className="flex min-h-[44px] items-center gap-3 text-sm"><input type="checkbox" name="publish" className="h-4 w-4 accent-[#126F5A]" /> Publish now (otherwise saved as a draft)</label>
       {state?.error && <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">{state.error}</p>}
       {state?.ok && <p role="status" className="text-sm font-medium text-brand-dark dark:text-brand">Listing added.</p>}
       <button type="submit" disabled={pending} className="btn btn-secondary w-full">{pending ? "Adding…" : "Add listing"}</button>

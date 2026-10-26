@@ -23,7 +23,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <h1 className="px-4 pt-5 text-xl font-bold">Discover</h1>
+      <h1 className="px-5 pt-6 text-2xl font-extrabold">Discover</h1>
       <DiscoverTabs active="people" />
       <form action="/discover" role="search" className="flex gap-2 border-b border-line px-4 py-4 dark:border-white/10">
         <label htmlFor="q" className="sr-only">Search people by name or username</label>

@@ -8,23 +8,30 @@
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
   body {
-    @apply bg-white text-ink antialiased dark:bg-night dark:text-slate-100;
+    @apply bg-[#FAFBFC] text-ink antialiased dark:bg-night dark:text-slate-100;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
-  :focus-visible { outline: 2px solid #00BFA6; outline-offset: 2px; }
+  h1, h2, h3 { letter-spacing: -0.025em; }
+  :focus-visible { outline: 2px solid #1FCB77; outline-offset: 2px; }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
   }
-  .btn-primary { @apply bg-brand text-ink hover:bg-brand-dark hover:text-white; }
-  .btn-secondary { @apply border border-line text-ink hover:bg-surface dark:border-white/20 dark:text-white dark:hover:bg-white/10; }
+  .btn-primary { @apply bg-brand-dark text-white shadow-glow hover:bg-brand-deep active:scale-[0.99]; }
+  .btn-secondary { @apply border border-line bg-white text-ink hover:bg-surface dark:border-white/20 dark:bg-transparent dark:text-white dark:hover:bg-white/10; }
+  .btn-light { @apply border border-white/30 text-white hover:bg-white/10; }
   .field {
-    @apply min-h-[44px] w-full rounded-xl border border-line bg-white px-3.5 text-base text-ink placeholder:text-muted dark:border-white/20 dark:bg-white/5 dark:text-white;
+    @apply min-h-[52px] w-full rounded-full border border-line bg-white px-5 text-base text-ink placeholder:text-slate-400 transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/15 dark:bg-white/5 dark:text-white;
   }
-  .label { @apply mb-1.5 block text-sm font-medium; }
+  textarea.field { @apply rounded-3xl py-3.5; }
+  select.field { @apply pr-10; }
+  .label { @apply mb-2 block text-sm font-medium text-ink/80 dark:text-slate-200; }
+  .card { @apply rounded-3xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/5 dark:shadow-none; }
+  .chip { @apply inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-tint text-brand-dark dark:bg-brand/15 dark:text-brand; }
+  .eyebrow { @apply text-sm font-semibold text-brand-dark dark:text-brand; }
 }
 
 @media (prefers-reduced-motion: reduce) {

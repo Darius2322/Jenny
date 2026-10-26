@@ -28,7 +28,7 @@ export default async function BusinessDashboard() {
   if (!businessId) {
     return (
       <>
-        <h1 className="px-4 pt-5 text-xl font-bold">Set up your business</h1>
+        <h1 className="px-5 pt-6 text-2xl font-extrabold">Set up your business</h1>
         <p className="px-4 pt-2 text-sm text-muted">Create a public profile so customers can find you and send enquiries. New profiles are reviewed before they appear in Discover.</p>
         <div className="px-4 py-5"><BusinessForm /></div>
       </>

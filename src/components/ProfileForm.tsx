@@ -39,11 +39,11 @@ export function ProfileForm({ profile }: { profile: P }) {
       </div>
       <fieldset>
         <legend className="label">Who can see your profile and posts?</legend>
-        <label className="flex min-h-[44px] items-center gap-3"><input type="radio" name="visibility" value="public" defaultChecked={profile.visibility === "public"} className="h-4 w-4 accent-[#00BFA6]" /> Everyone on Jenny</label>
-        <label className="flex min-h-[44px] items-center gap-3"><input type="radio" name="visibility" value="followers" defaultChecked={profile.visibility === "followers"} className="h-4 w-4 accent-[#00BFA6]" /> Only followers I approve</label>
+        <label className="flex min-h-[44px] items-center gap-3"><input type="radio" name="visibility" value="public" defaultChecked={profile.visibility === "public"} className="h-4 w-4 accent-[#126F5A]" /> Everyone on Jenny</label>
+        <label className="flex min-h-[44px] items-center gap-3"><input type="radio" name="visibility" value="followers" defaultChecked={profile.visibility === "followers"} className="h-4 w-4 accent-[#126F5A]" /> Only followers I approve</label>
       </fieldset>
       <label className="flex min-h-[44px] items-center gap-3">
-        <input type="checkbox" name="discoverable" defaultChecked={profile.discoverable} className="h-4 w-4 accent-[#00BFA6]" /> Let people find me in search
+        <input type="checkbox" name="discoverable" defaultChecked={profile.discoverable} className="h-4 w-4 accent-[#126F5A]" /> Let people find me in search
       </label>
       {state?.error && <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">{state.error}</p>}
       {state?.ok && <p role="status" className="text-sm font-medium text-brand-dark dark:text-brand">Profile saved.</p>}

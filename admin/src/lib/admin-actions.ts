@@ -118,3 +118,43 @@ export async function setUserStatus(formData: FormData) {
   await audit(staff.id, `user.${action}`, "profile", userId);
   revalidatePath("/users");
 }
+
+/**
+ * Permanently deletes an account after a user's own deletion request. Administrators only.
+ * Posts, comments, messages, follows etc. cascade from the profile. Uploaded files are removed first.
+ * Refuses staff accounts and anyone who still owns a business (the database blocks that anyway).
+ */
+export async function processDeletion(formData: FormData) {
+  const staff = await requireStaff(ADMINS);
+  const parsed = z.object({ requestId: uuid, userId: uuid, confirm: z.string().trim().min(1) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { requestId, userId, confirm } = parsed.data;
+  if (userId === staff.id) return;
+
+  const svc = createServiceClient();
+  const { data: request } = await svc.from("account_deletion_requests").select("id, user_id, status").eq("id", requestId).maybeSingle();
+  if (!request || request.user_id !== userId || request.status !== "requested") return;
+
+  const { data: profile } = await svc.from("profiles").select("username").eq("id", userId).maybeSingle();
+  if (!profile || profile.username !== confirm.toLowerCase()) return; // typed username must match
+
+  const [{ data: role }, { count: owned }] = await Promise.all([
+    svc.from("admin_roles").select("user_id").eq("user_id", userId).maybeSingle(),
+    svc.from("businesses").select("id", { count: "exact", head: true }).eq("created_by", userId),
+  ]);
+  if (role || (owned ?? 0) > 0) return;
+
+  for (const bucket of ["avatars", "covers", "post-media"] as const) {
+    const { data: files } = await svc.storage.from(bucket).list(userId, { limit: 1000 });
+    const paths = (files ?? []).map((f) => `${userId}/${f.name}`);
+    if (paths.length) await svc.storage.from(bucket).remove(paths);
+  }
+
+  await audit(staff.id, "user.delete", "user", userId, { requestId });
+  const { error } = await svc.auth.admin.deleteUser(userId);
+  if (error) {
+    await audit(staff.id, "user.delete_failed", "user", userId, { requestId });
+    return;
+  }
+  revalidatePath("/deletions");
+}

@@ -10,10 +10,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null);
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-surface dark:bg-night">
       <AppNav unread={count ?? 0} />
-      <main id="main" className="mx-auto min-h-dvh w-full max-w-xl border-line pb-24 dark:border-white/10 md:ml-64 md:max-w-none md:pb-0 md:[&>*]:mx-auto md:[&>*]:max-w-xl">
-        {children}
+      <main id="main" className="md:ml-64">
+        <div className="mx-auto min-h-dvh w-full max-w-xl overflow-hidden bg-white pb-28 dark:bg-slate-900 md:my-6 md:min-h-0 md:rounded-4xl md:border md:border-line md:pb-4 md:shadow-soft md:dark:border-white/10">
+          {children}
+        </div>
       </main>
     </div>
   );

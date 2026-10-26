@@ -24,7 +24,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <h1 className="px-4 pt-5 text-xl font-bold">Discover</h1>
+      <h1 className="px-5 pt-6 text-2xl font-extrabold">Discover</h1>
       <DiscoverTabs active="news" />
       <NewsForm />
       {error && <p role="alert" className="p-4 text-sm text-red-600">Couldn&apos;t load news. Please try again.</p>}

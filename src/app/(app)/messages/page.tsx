@@ -46,7 +46,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <AutoRefresh seconds={15} />
-      <h1 className="px-4 pt-5 text-xl font-bold">Messages</h1>
+      <h1 className="px-5 pt-6 text-2xl font-extrabold">Messages</h1>
       {err && <p role="alert" className="mx-4 mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">You can&apos;t start a conversation with that person.</p>}
 
       {list.length === 0 && (

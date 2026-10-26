@@ -8,7 +8,8 @@ export const metadata: Metadata = { title: "Create account" };
 export default function RegisterPage() {
   return (
     <AuthForm
-      title="Create your Jenny account"
+      title="Create your account"
+      subtitle="Join Jenny. It only takes a minute."
       submitLabel="Create account"
       action={register}
       terms
@@ -18,7 +19,7 @@ export default function RegisterPage() {
         { name: "email", label: "Email", type: "email", autoComplete: "email" },
         { name: "password", label: "Password", type: "password", autoComplete: "new-password", hint: "At least 10 characters." },
       ]}
-      footer={<p>Already have an account? <Link href="/login" className="font-semibold text-ink underline dark:text-white">Sign in</Link></p>}
+      footer={<p>Already have an account? <Link href="/login" className="font-semibold text-brand-dark underline dark:text-brand">Sign in</Link></p>}
     />
   );
 }

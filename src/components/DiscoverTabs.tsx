@@ -3,10 +3,10 @@ import Link from "next/link";
 export function DiscoverTabs({ active }: { active: "people" | "businesses" | "news" }) {
   const tabs = [{ id: "people", label: "People", href: "/discover" }, { id: "businesses", label: "Businesses", href: "/businesses" }, { id: "news", label: "News", href: "/news" }] as const;
   return (
-    <nav aria-label="Discover sections" className="mt-3 flex gap-1 border-b border-line px-4 dark:border-white/10">
+    <nav aria-label="Discover sections" className="mt-4 flex gap-2 border-b border-line px-5 pb-4 dark:border-white/10">
       {tabs.map((t) => (
         <Link key={t.id} href={t.href} aria-current={active === t.id ? "page" : undefined}
-          className={`min-h-[44px] border-b-2 px-3 py-2.5 text-sm font-semibold ${active === t.id ? "border-brand text-ink dark:text-white" : "border-transparent text-muted"}`}>
+          className={`inline-flex min-h-[40px] items-center rounded-full px-5 text-sm font-semibold transition-colors ${active === t.id ? "bg-brand-dark text-white shadow-glow" : "bg-surface text-muted hover:text-ink dark:bg-white/10 dark:hover:text-white"}`}>
           {t.label}
         </Link>
       ))}

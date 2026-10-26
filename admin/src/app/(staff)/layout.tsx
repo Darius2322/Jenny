@@ -8,7 +8,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const isAdmin = ADMINS.includes(staff.role);
   const links = [
     { href: "/", label: "Overview" }, { href: "/reports", label: "Reports" }, { href: "/businesses", label: "Businesses" },
-    { href: "/news", label: "News" }, { href: "/users", label: "Users" }, ...(isAdmin ? [{ href: "/audit", label: "Audit log" }] : []),
+    { href: "/news", label: "News" }, { href: "/users", label: "Users" }, ...(isAdmin ? [{ href: "/deletions", label: "Deletions" }, { href: "/audit", label: "Audit log" }] : []),
   ];
   return (
     <div className="min-h-dvh">
@@ -17,7 +17,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <Logo size={28} />
           <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-semibold text-white dark:bg-white dark:text-ink">Admin</span>
           <nav aria-label="Admin" className="flex flex-1 flex-wrap gap-1">
-            {links.map((l) => <Link key={l.href} href={l.href} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface dark:hover:bg-white/10">{l.label}</Link>)}
+            {links.map((l) => <Link key={l.href} href={l.href} className="rounded-full px-4 py-2 text-sm font-semibold text-ink/80 hover:bg-brand-tint hover:text-brand-deep dark:text-slate-300 dark:hover:bg-white/10">{l.label}</Link>)}
           </nav>
           <span className="text-xs text-muted">{staff.email} · {staff.role.replace("_", " ")}</span>
           <form action={staffLogout}><button type="submit" className="btn btn-secondary !min-h-[36px] !px-3">Sign out</button></form>

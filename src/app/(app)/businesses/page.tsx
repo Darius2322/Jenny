@@ -27,7 +27,7 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <h1 className="px-4 pt-5 text-xl font-bold">Discover</h1>
+      <h1 className="px-5 pt-6 text-2xl font-extrabold">Discover</h1>
       <DiscoverTabs active="businesses" />
       <form action="/businesses" role="search" className="flex flex-col gap-2 border-b border-line px-4 py-4 dark:border-white/10">
         <div className="flex gap-2">

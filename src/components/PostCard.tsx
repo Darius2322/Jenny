@@ -13,7 +13,7 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
   return (
     <article className="border-b border-line px-4 py-4 dark:border-white/10">
       <div className="flex gap-3">
-        <Avatar name={author?.display_name ?? "?"} path={author?.avatar_path} />
+        <Avatar name={author?.display_name ?? "?"} path={author?.avatar_path} size={44} />
         <div className="min-w-0 flex-1">
           <header className="flex flex-wrap items-baseline gap-x-2 text-sm">
             {author ? (
@@ -32,7 +32,7 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
 
           {post.images.map((src) => (
             <Image key={src} src={src} alt="Photo attached to this post" width={900} height={900} sizes="(max-width: 640px) 100vw, 576px"
-              className="mt-3 h-auto max-h-[480px] w-full rounded-2xl border border-line object-cover dark:border-white/10" />
+              className="mt-3 h-auto max-h-[480px] w-full rounded-3xl border border-line object-cover dark:border-white/10" />
           ))}
 
           <div className="-ml-2 mt-2 flex items-center gap-1 text-sm text-muted">

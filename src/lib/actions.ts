@@ -259,3 +259,24 @@ export async function markAllNotificationsRead() {
   await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("recipient_id", user.id).is("read_at", null);
   revalidatePath("/notifications", "layout");
 }
+
+export async function requestAccountDeletion(_: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "DELETE") return { error: "Type DELETE to confirm." };
+  const reason = z.string().trim().max(500).optional().safeParse(formData.get("reason") || undefined);
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("account_deletion_requests").insert({
+    user_id: user.id, status: "requested", reason: reason.success && reason.data ? reason.data : null,
+  });
+  if (error) {
+    if (error.message.includes("duplicate key")) return { error: "You already have a deletion request open." };
+    return { error: friendly(error.message) };
+  }
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function cancelAccountDeletion() {
+  const { supabase, user } = await requireUser();
+  await supabase.from("account_deletion_requests").update({ status: "cancelled" }).eq("user_id", user.id).eq("status", "requested");
+  revalidatePath("/settings");
+}

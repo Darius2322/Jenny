@@ -7,7 +7,8 @@ Mobile-first social platform (Kenya first). Next.js (App Router) + TypeScript + 
 | Area | State |
 |---|---|
 | Supabase project `Jenny` (`iazotenpvctpqwthabci`, eu-central-1) | Connected. Schema, RLS, storage and indexes applied live via 5 migrations. |
-| Branding: logo SVGs, PNG icons, maskable icon, OG image, favicon | Done and visually checked. |
+| Branding: logo SVGs, PNG icons, maskable icon, OG image, favicon | Rebuilt from the owner's two-tone green J logo (vector traced from the supplied image). Icons and OG image visually checked. |
+| Visual redesign (Plus Jakarta Sans, green palette from the logo, pill buttons and inputs, rounded cards, floating mobile nav, dark landing hero, sheet-style sign-in) in the style of reatech360.com's layout | **Written, NOT built and NOT visually checked in a browser.** |
 | Landing, auth, PWA files, offline page | **Written, NOT built or run** (build sandbox could not reach the npm registry). |
 | Milestone 3 screens: app shell + nav, home feed (cursor "load older"), composer, post detail with comments, likes, delete, profile pages, follow/unfollow/requests, block, report, people search, profile settings, notifications | **Written, NOT built or run.** |
 | RLS isolation tests | **Written (`supabase/tests/rls_isolation.sql`), NOT run.** Running it from the build session was cancelled twice. Run it in the Supabase SQL editor: every line must say PASS. |
@@ -16,7 +17,8 @@ Mobile-first social platform (Kenya first). Next.js (App Router) + TypeScript + 
 | News page (published stories with honest labels, source links, story-tip form; nothing auto-publishes) | **Written, NOT built or run.** |
 | Admin app (`admin/`, separate Next.js app): staff sign-in + mandatory authenticator-app 2FA, overview counts, reports queue (hide/remove/dismiss), business approval/suspension/verification, news review, user suspension, audit log | **Written, NOT built or run, NOT security-tested.** Needs your `service_role` key. |
 | Comment replies (one level), profile cover photos, business logo uploads | **Written, NOT built or run.** |
-| Community topics UI, account deletion handling, dating | Not started (tables exist). |
+| Account deletion REQUEST (Settings; one open request per user, cancellable). Processed by an administrator in the admin app (Deletions); posts, comments, messages, follows etc. cascade. KNOWN GAPS: a user who created a business cannot be deleted until the business is deleted or reassigned (`businesses.created_by` is RESTRICT) and staff accounts with moderation history are blocked the same way; the admin screen refuses those cases rather than resolving them. Business logos are not removed. Admin screen: `/deletions` (administrators only) removes the user's uploaded photos and deletes the account; refuses staff accounts and business owners. | **Written, NOT built or run.** Migration `006_deletion_request_cancel` applied live. |
+| Community topics UI, dating | Not started (tables exist). |
 
 Partial check done: a TypeScript pass over `src/` with stubbed Next/React/Supabase/zod types found no errors in the project's own code. That is NOT a build: it cannot catch wrong library usage, Tailwind/ESLint issues, or runtime bugs. Run the real build first.
 
