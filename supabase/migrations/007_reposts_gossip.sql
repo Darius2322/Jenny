@@ -1,0 +1,3 @@
+-- Applied live via MCP as "007_reposts_gossip". Summary: reposts table + RLS; gossip_posts (closed table) with
+-- definer RPCs gossip_feed/gossip_create/gossip_delete; content_reports.target_type allows 'gossip'; get_explore RPC.
+-- See the Supabase migrations list for the exact SQL.

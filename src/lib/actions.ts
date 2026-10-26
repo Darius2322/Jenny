@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { uploadImage } from "@/lib/upload";
 
-export type ActionState = { error?: string; ok?: boolean } | undefined;
+export type ActionState = { error?: string; ok?: boolean; postId?: string } | undefined;
 
 function friendly(message: string | undefined): string {
   if (!message) return "Something went wrong. Please try again.";
@@ -38,22 +38,24 @@ export async function createPost(_: ActionState, formData: FormData): Promise<Ac
     uploaded = res;
   }
 
-  const { data: post, error } = await supabase.from("posts").insert({ author_id: user.id, body: body.data }).select("id").single();
-  if (error || !post) {
+  // Generate the id here and insert without .select(): RETURNING would run the SELECT policy
+  // (which looks the row up by id) before the row is visible, and the insert would be rejected.
+  const postId = crypto.randomUUID();
+  const { error } = await supabase.from("posts").insert({ id: postId, author_id: user.id, body: body.data });
+  if (error) {
     if (uploaded) await supabase.storage.from("post-media").remove([uploaded.path]);
-    return { error: friendly(error?.message) };
+    return { error: friendly(error.message) };
   }
   if (uploaded) {
-    const { error: mediaErr } = await supabase.from("post_media").insert({ post_id: post.id, storage_path: uploaded.path, mime_type: uploaded.mime, position: 0 });
+    const { error: mediaErr } = await supabase.from("post_media").insert({ post_id: postId, storage_path: uploaded.path, mime_type: uploaded.mime, position: 0 });
     if (mediaErr) {
-      // Don't leave a half-created post: remove it and the orphaned file.
-      await supabase.from("posts").delete().eq("id", post.id);
+      await supabase.from("posts").delete().eq("id", postId);
       await supabase.storage.from("post-media").remove([uploaded.path]);
       return { error: "Couldn't attach the image. Please try again." };
     }
   }
   revalidatePath("/home");
-  return { ok: true };
+  return { ok: true, postId };
 }
 
 export async function updateAvatar(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -210,7 +212,7 @@ export async function acceptFollowRequest(formData: FormData) {
 }
 
 export async function reportContent(formData: FormData) {
-  const targetType = z.enum(["post", "comment", "profile", "business", "listing"]).safeParse(formData.get("targetType"));
+  const targetType = z.enum(["post", "comment", "profile", "business", "listing", "gossip"]).safeParse(formData.get("targetType"));
   const targetId = uuid.safeParse(formData.get("targetId"));
   const reason = z.enum(["spam", "harassment", "hate", "sexual_content", "violence", "fraud", "misinformation", "privacy", "underage", "other"]).safeParse(formData.get("reason"));
   if (!targetType.success || !targetId.success || !reason.success) return;
@@ -279,4 +281,43 @@ export async function cancelAccountDeletion() {
   const { supabase, user } = await requireUser();
   await supabase.from("account_deletion_requests").update({ status: "cancelled" }).eq("user_id", user.id).eq("status", "requested");
   revalidatePath("/settings");
+}
+
+
+export async function toggleRepost(formData: FormData) {
+  const id = uuid.safeParse(formData.get("postId"));
+  if (!id.success) return;
+  const { supabase, user } = await requireUser();
+  const { data: existing } = await supabase.from("reposts").select("post_id").eq("post_id", id.data).eq("user_id", user.id).maybeSingle();
+  if (existing) await supabase.from("reposts").delete().eq("post_id", id.data).eq("user_id", user.id);
+  else await supabase.from("reposts").insert({ post_id: id.data, user_id: user.id });
+  revalidatePath("/home");
+  revalidatePath("/profile", "layout");
+}
+
+const aliasSchema = z.string().trim().min(2, "Aka must be 2–24 characters.").max(24, "Aka must be 2–24 characters.");
+
+export async function createGossip(_: ActionState, formData: FormData): Promise<ActionState> {
+  const body = z.string().trim().min(1, "Write something first.").max(1000, "Gossip can be up to 1000 characters.").safeParse(formData.get("body"));
+  if (!body.success) return { error: body.error.issues[0]?.message };
+  const rawAlias = formData.get("alias");
+  let alias: string | null = null;
+  if (typeof rawAlias === "string" && rawAlias.trim()) {
+    const a = aliasSchema.safeParse(rawAlias);
+    if (!a.success) return { error: a.error.issues[0]?.message };
+    alias = a.data;
+  }
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("gossip_create", { p_body: body.data, p_alias: alias });
+  if (error) return { error: friendly(error.message) };
+  revalidatePath("/gossip");
+  return { ok: true };
+}
+
+export async function deleteGossip(formData: FormData) {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return;
+  const { supabase } = await requireUser();
+  await supabase.rpc("gossip_delete", { p_id: id.data });
+  revalidatePath("/gossip");
 }

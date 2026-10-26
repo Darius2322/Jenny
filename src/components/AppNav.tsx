@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Compass, PlusCircle, MessageCircle, User, Bell, Settings, Store } from "lucide-react";
+import { Home, Compass, PlusCircle, MessageCircle, User, Bell, Store, Search } from "lucide-react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -10,19 +10,18 @@ const primary = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/discover", label: "Discover", icon: Compass },
   { href: "/create", label: "Create", icon: PlusCircle },
-  { href: "/messages", label: "Messages", icon: MessageCircle },
+  { href: "/messages", label: "DM", icon: MessageCircle },
   { href: "/profile", label: "Profile", icon: User },
 ] as const;
 
 const secondary = [
   { href: "/business", label: "My business", icon: Store },
   { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 function useActive() {
   const pathname = usePathname();
-  return (href: string) => pathname === href || pathname.startsWith(href + "/") || (href === "/profile" && pathname.startsWith("/u/"));
+  return (href: string) => pathname === href || pathname.startsWith(href + "/") || (href === "/profile" && (pathname.startsWith("/u/") || pathname.startsWith("/settings")));
 }
 
 export function AppNav({ unread }: { unread: number }) {
@@ -56,7 +55,7 @@ export function AppNav({ unread }: { unread: number }) {
             <Bell size={20} aria-hidden="true" />
             {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-brand ring-2 ring-white dark:ring-night" aria-hidden="true" />}
           </Link>
-          <Link href="/settings" aria-label="Settings" className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink dark:bg-white/10 dark:text-white"><Settings size={20} aria-hidden="true" /></Link>
+          <Link href="/search" aria-label="Search" className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink dark:bg-white/10 dark:text-white"><Search size={20} aria-hidden="true" /></Link>
           <ThemeToggle />
         </div>
       </header>

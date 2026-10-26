@@ -67,7 +67,7 @@ export function AuthForm(props: {
               ))}
               {props.terms && (
                 <label className="flex items-start gap-3 text-sm">
-                  <input type="checkbox" name="acceptTerms" required className="mt-1 h-4 w-4 accent-[#126F5A]" />
+                  <input type="checkbox" name="acceptTerms" required className="mt-1" />
                   <span>I agree to the <Link href="/terms" className="font-semibold text-brand-dark underline dark:text-brand">Terms</Link> and <Link href="/privacy" className="font-semibold text-brand-dark underline dark:text-brand">Privacy Policy</Link>.</span>
                 </label>
               )}

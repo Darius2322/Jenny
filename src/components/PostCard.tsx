@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, MessageCircle, Trash2, Flag } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Trash2, Flag } from "lucide-react";
 import { Avatar } from "./Avatar";
-import { deletePost, toggleReaction, reportContent } from "@/lib/actions";
+import { deletePost, toggleReaction, toggleRepost, reportContent } from "@/lib/actions";
 import { timeAgo, type PostView } from "@/lib/posts";
 
 export function PostCard({ post, viewerId, detail = false }: { post: PostView; viewerId: string; detail?: boolean }) {
@@ -47,6 +47,13 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
               <MessageCircle size={20} aria-hidden="true" />
               <span>{post.comment_count}</span>
             </Link>
+            <form action={toggleRepost}>
+              <input type="hidden" name="postId" value={post.id} />
+              <button type="submit" aria-pressed={post.my_repost} aria-label={post.my_repost ? "Undo repost" : "Repost"} className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-2 hover:bg-surface dark:hover:bg-white/10 ${post.my_repost ? "text-brand-dark dark:text-brand" : ""}`}>
+                <Repeat2 size={20} aria-hidden="true" />
+                <span>{post.repost_count}</span>
+              </button>
+            </form>
             <span className="flex-1" />
             {mine ? (
               <form action={deletePost}>

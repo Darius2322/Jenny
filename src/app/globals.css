@@ -14,6 +14,22 @@
   }
   h1, h2, h3 { letter-spacing: -0.025em; }
   :focus-visible { outline: 2px solid #1FCB77; outline-offset: 2px; }
+  button, a, summary { -webkit-tap-highlight-color: transparent; }
+  /* Custom checkbox / radio so no native browser control shows */
+  input[type="checkbox"], input[type="radio"] {
+    -webkit-appearance: none; appearance: none; flex: none; width: 1.375rem; height: 1.375rem;
+    border: 1.5px solid #CBD5E1; background: #fff; display: inline-grid; place-content: center; transition: .15s;
+  }
+  input[type="checkbox"] { border-radius: .45rem; }
+  input[type="radio"] { border-radius: 9999px; }
+  input[type="checkbox"]:checked, input[type="radio"]:checked { background: #126F5A; border-color: #126F5A; }
+  input[type="checkbox"]:checked::after { content: ""; width: .35rem; height: .65rem; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+  input[type="radio"]:checked::after { content: ""; width: .5rem; height: .5rem; border-radius: 9999px; background: #fff; }
+  .dark input[type="checkbox"], .dark input[type="radio"] { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.3); }
+  .dark input[type="checkbox"]:checked, .dark input[type="radio"]:checked { background: #1FCB77; border-color: #1FCB77; }
+  summary { list-style: none; cursor: pointer; }
+  summary::-webkit-details-marker { display: none; }
+  select { -webkit-appearance: none; appearance: none; }
 }
 
 @layer components {
@@ -27,7 +43,7 @@
     @apply min-h-[52px] w-full rounded-full border border-line bg-white px-5 text-base text-ink placeholder:text-slate-400 transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/15 dark:bg-white/5 dark:text-white;
   }
   textarea.field { @apply rounded-3xl py-3.5; }
-  select.field { @apply pr-10; }
+  select.field { @apply pr-12; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1.1rem center; }
   .label { @apply mb-2 block text-sm font-medium text-ink/80 dark:text-slate-200; }
   .card { @apply rounded-3xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/5 dark:shadow-none; }
   .chip { @apply inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-tint text-brand-dark dark:bg-brand/15 dark:text-brand; }

@@ -6,7 +6,7 @@ import { timeAgo, type Author } from "@/lib/posts";
 import { Avatar } from "@/components/Avatar";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
-export const metadata: Metadata = { title: "Messages", robots: { index: false } };
+export const metadata: Metadata = { title: "DM", robots: { index: false } };
 
 type Msg = { conversation_id: string; sender_id: string; body: string; created_at: string };
 
@@ -46,7 +46,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <AutoRefresh seconds={15} />
-      <h1 className="px-5 pt-6 text-2xl font-extrabold">Messages</h1>
+      <h1 className="px-5 pt-6 text-2xl font-extrabold">DM</h1>
       {err && <p role="alert" className="mx-4 mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">You can&apos;t start a conversation with that person.</p>}
 
       {list.length === 0 && (

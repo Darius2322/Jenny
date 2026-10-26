@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /** Routes that require a signed-in user. Enforcement ALSO happens in RLS; this is UX + defence in depth. */
 const PROTECTED_PREFIXES = [
   "/home", "/discover", "/create", "/messages", "/notifications",
-  "/profile", "/settings", "/business", "/dating", "/search", "/u", "/post", "/businesses", "/news",
+  "/profile", "/settings", "/business", "/dating", "/gossip", "/search", "/u", "/post", "/businesses", "/news",
 ];
 const AUTH_PAGES = ["/login", "/register", "/forgot-password"];
 

@@ -63,7 +63,9 @@ Advisor note: 3 intentional WARNs (`lookup_profile`, `search_profiles`, `start_c
 - Username already taken at signup: the DB trigger assigns a temporary `user_xxxx` name instead of failing. Add a profile-setup screen (Milestone 2) to choose a final one.
 - Admin roles are provisioned server-side only (SQL / service role); no public path assigns them. The separate admin app is Milestone 6.
 - Public legal pages are honest placeholders marked "not legally reviewed". Get real Terms/Privacy reviewed for Kenyan data-protection requirements before launch.
-- Dating is disabled: no tables, no routes beyond the middleware-protected `/dating` prefix.
+- Dating is disabled: `/dating` shows a "Coming soon" page only; no tables, no data collected.
+- Gossip is anonymous: the table is closed to clients; `gossip_feed/create/delete` RPCs never return the author. Staff can look up an author only via the service role when acting on a report.
+- Reposts, infinite home feed (`get_explore`), profile hub and sub menus: written, NOT built or run.
 - The logo wordmark in the standalone SVGs uses text (Inter, with fallbacks). Convert to outlines for print.
 
 ## Milestone 3 limitations (known)

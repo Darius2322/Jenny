@@ -1,21 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { updateBusinessLogo, removeBusinessLogo, type BizState } from "@/lib/business-actions";
 import { BusinessLogo } from "./BusinessLogo";
+import { ImagePicker } from "./ImagePicker";
 
 export function BusinessLogoForm({ businessId, name, path }: { businessId: string; name: string; path: string | null }) {
   const [state, action, pending] = useActionState<BizState, FormData>(updateBusinessLogo, undefined);
+  const [has, setHas] = useState(false);
   return (
     <section aria-labelledby="logo-heading" className="flex items-center gap-4 border-t border-line px-4 py-5 dark:border-white/10">
       <BusinessLogo name={name} path={path} size={64} />
       <div className="min-w-0 flex-1">
         <h2 id="logo-heading" className="font-semibold">Business logo</h2>
-        <form action={action} className="mt-2 flex flex-wrap items-center gap-2">
+        <form action={action} className="mt-2 flex flex-col items-start gap-2">
           <input type="hidden" name="businessId" value={businessId} />
-          <label htmlFor="logo" className="sr-only">Choose a logo (JPEG, PNG or WebP, max 2 MB)</label>
-          <input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp" required className="max-w-full text-sm" />
-          <button type="submit" disabled={pending} className="btn btn-secondary !min-h-[40px]">{pending ? "Uploading…" : "Upload"}</button>
+          <ImagePicker name="logo" label="Choose logo" maxMB={2} aspect="square" required resetKey={state} onPick={setHas} />
+          {has && <button type="submit" disabled={pending} className="btn btn-primary !min-h-[40px]">{pending ? "Uploading…" : "Save logo"}</button>}
         </form>
         {path && (
           <form action={removeBusinessLogo} className="mt-1">

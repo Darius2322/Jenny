@@ -12,6 +12,8 @@ export type PostView = {
   reaction_count: number;
   comment_count: number;
   my_reaction: string | null;
+  repost_count: number;
+  my_repost: boolean;
   images: string[];
   author: Author | null;
 };
@@ -24,7 +26,7 @@ type RawPost = {
 };
 
 /** Looks up authors (through RLS: hidden/blocked profiles simply come back as null). */
-export async function attachAuthors(supabase: SupabaseClient, rows: RawPost[]): Promise<PostView[]> {
+export async function attachAuthors(supabase: SupabaseClient, rows: RawPost[], viewerId?: string): Promise<PostView[]> {
   const ids = [...new Set(rows.map((r) => r.author_id))];
   const map = new Map<string, Author>();
   if (ids.length) {
@@ -39,7 +41,17 @@ export async function attachAuthors(supabase: SupabaseClient, rows: RawPost[]): 
       images.set(m.post_id, [...(images.get(m.post_id) ?? []), publicUrl("post-media", m.storage_path)]);
     });
   }
+  const repostCount = new Map<string, number>();
+  const myReposts = new Set<string>();
+  if (rows.length) {
+    const { data: rp } = await supabase.from("reposts").select("post_id, user_id").in("post_id", rows.map((r) => r.id));
+    (rp ?? []).forEach((x: { post_id: string; user_id: string }) => {
+      repostCount.set(x.post_id, (repostCount.get(x.post_id) ?? 0) + 1);
+      if (viewerId && x.user_id === viewerId) myReposts.add(x.post_id);
+    });
+  }
   return rows.map((r) => ({
+    repost_count: repostCount.get(r.id) ?? 0, my_repost: myReposts.has(r.id),
     id: r.id, author_id: r.author_id, body: r.body, created_at: r.created_at, edited_at: r.edited_at,
     reaction_count: Number(r.reaction_count ?? 0), comment_count: Number(r.comment_count ?? 0),
     my_reaction: r.my_reaction ?? null, images: images.get(r.id) ?? [], author: map.get(r.author_id) ?? null,
@@ -74,7 +86,7 @@ export async function queryPosts(
   return attachAuthors(supabase, rows.map((r) => ({
     id: r.id, author_id: r.author_id, body: r.body, created_at: r.created_at, edited_at: r.edited_at,
     reaction_count: r.reactions[0]?.count ?? 0, comment_count: r.comments[0]?.count ?? 0, my_reaction: mine.get(r.id) ?? null,
-  })));
+  })), viewerId);
 }
 
 export function timeAgo(iso: string): string {
@@ -84,4 +96,23 @@ export function timeAgo(iso: string): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   if (s < 604800) return `${Math.floor(s / 86400)}d`;
   return new Date(iso).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Posts for a list of ids (RLS still applies), returned in the order of `ids`. */
+export async function postsByIds(supabase: SupabaseClient, viewerId: string, ids: string[]): Promise<PostView[]> {
+  if (!ids.length) return [];
+  const { data } = await supabase
+    .from("posts")
+    .select("id, author_id, body, created_at, edited_at, reactions(count), comments(count)")
+    .eq("status", "published").in("id", ids);
+  const rows = (data ?? []) as CountRow[];
+  const mine = new Map<string, string>();
+  const { data: rx } = await supabase.from("reactions").select("post_id, kind").eq("user_id", viewerId).in("post_id", ids);
+  (rx ?? []).forEach((r: { post_id: string; kind: string }) => mine.set(r.post_id, r.kind));
+  const views = await attachAuthors(supabase, rows.map((r) => ({
+    id: r.id, author_id: r.author_id, body: r.body, created_at: r.created_at, edited_at: r.edited_at,
+    reaction_count: r.reactions[0]?.count ?? 0, comment_count: r.comments[0]?.count ?? 0, my_reaction: mine.get(r.id) ?? null,
+  })), viewerId);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return views.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
