@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import type { FormState } from "@/app/auth/actions";
@@ -9,12 +9,15 @@ import { ThemeToggle } from "./ThemeToggle";
 
 type Field = { name: string; label: string; type?: string; autoComplete?: string; hint?: string };
 
-function PasswordInput({ f }: { f: Field }) {
+type Common = { value: string; onChange: (v: string) => void; error?: string };
+
+function PasswordInput({ f, value, onChange, error }: { f: Field } & Common) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
-      <input id={f.name} name={f.name} type={show ? "text" : "password"} autoComplete={f.autoComplete} required className="field pr-14"
-        aria-describedby={f.hint ? `${f.name}-hint` : undefined} />
+      <input id={f.name} name={f.name} type={show ? "text" : "password"} autoComplete={f.autoComplete} required className={`field pr-14 ${error ? "!border-red-500" : ""}`}
+        value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${f.name}-err` : f.hint ? `${f.name}-hint` : undefined} />
       <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide password" : "Show password"} aria-pressed={show}
         className="absolute right-2 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:text-ink dark:hover:text-white">
         {show ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
@@ -35,6 +38,20 @@ export function AuthForm(props: {
   notice?: string;
 }) {
   const [state, formAction, pending] = useActionState(props.action, undefined);
+  // Controlled values: a failed submit keeps everything the person typed.
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [terms, setTerms] = useState(false);
+  const errs = state?.fieldErrors ?? {};
+
+  // Jump straight to the first wrong field.
+  useEffect(() => {
+    const first = props.fields.find((f) => errs[f.name])?.name ?? (errs.acceptTerms ? "acceptTerms" : null);
+    if (!first) return;
+    const el = document.getElementById(first);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    (el as HTMLInputElement | null)?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-night">
@@ -58,19 +75,22 @@ export function AuthForm(props: {
               {props.fields.map((f) => (
                 <div key={f.name}>
                   <label htmlFor={f.name} className="label">{f.label}</label>
-                  {f.type === "password" ? <PasswordInput f={f} /> : (
-                    <input id={f.name} name={f.name} type={f.type ?? "text"} autoComplete={f.autoComplete} required className="field"
-                      aria-describedby={f.hint ? `${f.name}-hint` : undefined} />
+                  {f.type === "password" ? <PasswordInput f={f} value={values[f.name] ?? ""} onChange={(v) => setValues((s) => ({ ...s, [f.name]: v }))} error={errs[f.name]} /> : (
+                    <input id={f.name} name={f.name} type={f.type ?? "text"} autoComplete={f.autoComplete} required className={`field ${errs[f.name] ? "!border-red-500" : ""}`}
+                      value={values[f.name] ?? ""} onChange={(e) => setValues((s) => ({ ...s, [f.name]: e.target.value }))} aria-invalid={errs[f.name] ? true : undefined}
+                      aria-describedby={errs[f.name] ? `${f.name}-err` : f.hint ? `${f.name}-hint` : undefined} />
                   )}
-                  {f.hint && <p id={`${f.name}-hint`} className="mt-1.5 px-1 text-xs text-muted">{f.hint}</p>}
+                  {errs[f.name] ? <p id={`${f.name}-err`} role="alert" className="mt-1.5 px-1 text-xs font-semibold text-red-600 dark:text-red-400">{errs[f.name]}</p>
+                    : f.hint && <p id={`${f.name}-hint`} className="mt-1.5 px-1 text-xs text-muted">{f.hint}</p>}
                 </div>
               ))}
               {props.terms && (
                 <label className="flex items-start gap-3 text-sm">
-                  <input type="checkbox" name="acceptTerms" required className="mt-1" />
+                  <input id="acceptTerms" type="checkbox" name="acceptTerms" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1" />
                   <span>I agree to the <Link href="/terms" className="font-semibold text-brand-dark underline dark:text-brand">Terms</Link> and <Link href="/privacy" className="font-semibold text-brand-dark underline dark:text-brand">Privacy Policy</Link>.</span>
                 </label>
               )}
+              {errs.acceptTerms && <p role="alert" className="-mt-2 px-1 text-xs font-semibold text-red-600 dark:text-red-400">{errs.acceptTerms}</p>}
               {state?.error && <p role="alert" className="rounded-2xl bg-red-50 p-3 text-sm font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300">{state.error}</p>}
               <button type="submit" disabled={pending} className="btn btn-primary w-full !min-h-[54px] text-base">{pending ? "Please wait…" : props.submitLabel}</button>
             </form>

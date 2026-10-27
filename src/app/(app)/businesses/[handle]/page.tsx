@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BadgeCheck, MapPin, Globe, Mail, Phone, Flag } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { reportContent } from "@/lib/actions";
 import type { Business, Listing } from "@/lib/business";
 import { EnquiryForm } from "@/components/EnquiryForm";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Business", robots: { index: false } 
 export default async function BusinessPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
 
   // RLS: only active businesses (or ones you manage) are returned.

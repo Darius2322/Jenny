@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { uploadImage } from "@/lib/upload";
+import { extractTokens } from "@/lib/tags";
 
 export type ActionState = { error?: string; ok?: boolean; postId?: string } | undefined;
 
@@ -18,7 +19,7 @@ function friendly(message: string | undefined): string {
 
 async function requireUser() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
   return { supabase, user };
 }
@@ -54,6 +55,9 @@ export async function createPost(_: ActionState, formData: FormData): Promise<Ac
       return { error: "Couldn't attach the image. Please try again." };
     }
   }
+  // Index #hashtags and @mentions (and notify mentioned people). Failure here must not lose the post.
+  const { tags, mentions } = extractTokens(body.data);
+  if (tags.length || mentions.length) await supabase.rpc("post_index", { p_post: postId, p_tags: tags, p_mentions: mentions });
   revalidatePath("/home");
   return { ok: true, postId };
 }
@@ -127,13 +131,15 @@ export async function sendMessage(_: ActionState, formData: FormData): Promise<A
   if (!conversationId.success) return { error: "Invalid conversation." };
   if (!body.success) return { error: body.error.issues[0]?.message };
   const { supabase, user } = await requireUser();
-  const { error } = await supabase.from("messages").insert({ conversation_id: conversationId.data, sender_id: user.id, body: body.data });
+  const replyRaw = formData.get("replyToId");
+  const reply = typeof replyRaw === "string" && replyRaw ? uuid.safeParse(replyRaw) : null;
+  const { error } = await supabase.from("messages").insert({
+    conversation_id: conversationId.data, sender_id: user.id, body: body.data, reply_to_id: reply?.success ? reply.data : null,
+  });
   if (error) {
     if (error.message.includes("violates row-level security")) return { error: "You can't message this person." };
     return { error: friendly(error.message) };
   }
-  revalidatePath(`/messages/${conversationId.data}`);
-  revalidatePath("/messages");
   return { ok: true };
 }
 
@@ -300,18 +306,45 @@ const aliasSchema = z.string().trim().min(2, "Aka must be 2–24 characters.").m
 export async function createGossip(_: ActionState, formData: FormData): Promise<ActionState> {
   const body = z.string().trim().min(1, "Write something first.").max(1000, "Gossip can be up to 1000 characters.").safeParse(formData.get("body"));
   if (!body.success) return { error: body.error.issues[0]?.message };
-  const rawAlias = formData.get("alias");
-  let alias: string | null = null;
-  if (typeof rawAlias === "string" && rawAlias.trim()) {
-    const a = aliasSchema.safeParse(rawAlias);
-    if (!a.success) return { error: a.error.issues[0]?.message };
-    alias = a.data;
-  }
+  const replyRaw = formData.get("replyTo");
+  const reply = typeof replyRaw === "string" && replyRaw ? uuid.safeParse(replyRaw) : null;
   const { supabase } = await requireUser();
-  const { error } = await supabase.rpc("gossip_create", { p_body: body.data, p_alias: alias });
+  const { error } = await supabase.rpc("gossip_post", { p_body: body.data, p_alias: null, p_reply_to: reply?.success ? reply.data : null });
   if (error) return { error: friendly(error.message) };
-  revalidatePath("/gossip");
   return { ok: true };
+}
+
+export async function saveGossipAlias(_: ActionState, formData: FormData): Promise<ActionState> {
+  const raw = formData.get("alias");
+  const { supabase, user } = await requireUser();
+  if (typeof raw !== "string" || !raw.trim()) {
+    const { error } = await supabase.from("gossip_settings").delete().eq("user_id", user.id);
+    return error ? { error: friendly(error.message) } : { ok: true };
+  }
+  const a = aliasSchema.safeParse(raw);
+  if (!a.success) return { error: a.error.issues[0]?.message };
+  const { error } = await supabase.from("gossip_settings").upsert({ user_id: user.id, alias: a.data });
+  return error ? { error: friendly(error.message) } : { ok: true };
+}
+
+export async function toggleGossipPin(gossipId: string, pin: boolean): Promise<boolean> {
+  const id = uuid.safeParse(gossipId);
+  if (!id.success) return false;
+  const { supabase, user } = await requireUser();
+  if (pin) {
+    const { error } = await supabase.from("gossip_pins").insert({ user_id: user.id, gossip_id: id.data });
+    return !error || error.message.includes("duplicate");
+  }
+  const { error } = await supabase.from("gossip_pins").delete().eq("user_id", user.id).eq("gossip_id", id.data);
+  return !error;
+}
+
+export async function removeGossip(gossipId: string): Promise<boolean> {
+  const id = uuid.safeParse(gossipId);
+  if (!id.success) return false;
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("gossip_delete", { p_id: id.data });
+  return !error;
 }
 
 export async function deleteGossip(formData: FormData) {
@@ -320,4 +353,99 @@ export async function deleteGossip(formData: FormData) {
   const { supabase } = await requireUser();
   await supabase.rpc("gossip_delete", { p_id: id.data });
   revalidatePath("/gossip");
+}
+
+
+/** Fire-and-forget style toggles for the UI: no page revalidation, the client updates itself. */
+export async function likePost(postId: string, like: boolean): Promise<boolean> {
+  const id = uuid.safeParse(postId);
+  if (!id.success) return false;
+  const { supabase, user } = await requireUser();
+  if (like) {
+    const { error } = await supabase.from("reactions").insert({ post_id: id.data, user_id: user.id, kind: "like" });
+    return !error || error.message.includes("duplicate");
+  }
+  const { error } = await supabase.from("reactions").delete().eq("post_id", id.data).eq("user_id", user.id);
+  return !error;
+}
+
+export async function repostPost(postId: string, on: boolean): Promise<boolean> {
+  const id = uuid.safeParse(postId);
+  if (!id.success) return false;
+  const { supabase, user } = await requireUser();
+  if (on) {
+    const { error } = await supabase.from("reposts").insert({ post_id: id.data, user_id: user.id });
+    return !error || error.message.includes("duplicate");
+  }
+  const { error } = await supabase.from("reposts").delete().eq("post_id", id.data).eq("user_id", user.id);
+  return !error;
+}
+
+
+export async function deleteMessage(messageId: string): Promise<boolean> {
+  const id = uuid.safeParse(messageId);
+  if (!id.success) return false;
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("messages").delete().eq("id", id.data).eq("sender_id", user.id);
+  return !error;
+}
+
+export async function togglePinMessage(conversationId: string, messageId: string, pin: boolean): Promise<boolean> {
+  const c = uuid.safeParse(conversationId), m = uuid.safeParse(messageId);
+  if (!c.success || !m.success) return false;
+  const { supabase, user } = await requireUser();
+  if (pin) {
+    const { error } = await supabase.from("message_pins").insert({ conversation_id: c.data, message_id: m.data, pinned_by: user.id });
+    return !error || error.message.includes("duplicate");
+  }
+  const { error } = await supabase.from("message_pins").delete().eq("conversation_id", c.data).eq("message_id", m.data);
+  return !error;
+}
+
+export async function togglePinChat(conversationId: string, pin: boolean): Promise<boolean> {
+  const c = uuid.safeParse(conversationId);
+  if (!c.success) return false;
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("conversation_members").update({ pinned_at: pin ? new Date().toISOString() : null })
+    .eq("conversation_id", c.data).eq("user_id", user.id);
+  revalidatePath("/messages");
+  return !error;
+}
+
+// ---------- Dating (18+, opt-in) ----------
+const GENDERS = ["woman", "man", "nonbinary"] as const;
+
+export async function saveDatingProfile(_: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("adult") !== "on") return { error: "Confirm that you are 18 or older to continue." };
+  const d = Number(formData.get("day")), m = Number(formData.get("month")), y = Number(formData.get("year"));
+  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return { error: "Enter your date of birth as day, month and year." };
+  const dob = new Date(Date.UTC(y, m - 1, d));
+  if (dob.getUTCFullYear() !== y || dob.getUTCMonth() !== m - 1 || dob.getUTCDate() !== d) return { error: "That date doesn't exist. Check your date of birth." };
+  const cutoff = new Date(); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 18);
+  if (dob > cutoff) return { error: "Dating on Jenny is for people aged 18 and over." };
+  const gender = z.enum(GENDERS).safeParse(formData.get("gender"));
+  if (!gender.success) return { error: "Choose how you identify." };
+  const looking = z.array(z.enum(GENDERS)).min(1, "Choose who you'd like to meet.").safeParse(formData.getAll("lookingFor"));
+  if (!looking.success) return { error: looking.error.issues[0]?.message };
+  const bio = z.string().trim().max(300, "About me can be up to 300 characters.").safeParse(formData.get("bio") ?? "");
+  if (!bio.success) return { error: bio.error.issues[0]?.message };
+  const region = z.string().trim().max(60).safeParse(formData.get("region") ?? "");
+  if (!region.success) return { error: "Area is too long." };
+  const { supabase } = await requireUser();
+  const iso = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const { error } = await supabase.rpc("dating_save", {
+    p_dob: iso, p_gender: gender.data, p_looking_for: looking.data, p_bio: bio.data, p_region: region.data, p_active: formData.get("hidden") !== "on",
+  });
+  if (error) return { error: error.message.includes("must_be_adult") ? "Dating on Jenny is for people aged 18 and over." : friendly(error.message) };
+  revalidatePath("/dating");
+  return { ok: true };
+}
+
+export async function swipeDating(userId: string, like: boolean): Promise<{ ok: boolean; matched: boolean }> {
+  const id = uuid.safeParse(userId);
+  if (!id.success) return { ok: false, matched: false };
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("dating_swipe", { p_to: id.data, p_like: like });
+  if (error) return { ok: false, matched: false };
+  return { ok: true, matched: data === true };
 }

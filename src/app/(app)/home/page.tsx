@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { loadFeed, type FeedKind } from "@/lib/feed-actions";
 import { InfiniteFeed } from "@/components/InfiniteFeed";
 import { Composer } from "@/components/Composer";
@@ -11,7 +11,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const { feed } = await searchParams;
   const kind: FeedKind = feed === "following" ? "following" : "explore";
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
   const page = await loadFeed(kind, null);
 

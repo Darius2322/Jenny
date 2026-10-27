@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { queryPosts, timeAgo, type Author } from "@/lib/posts";
 import { deleteComment } from "@/lib/actions";
 import { PostCard } from "@/components/PostCard";
@@ -19,7 +19,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   if (!z.string().uuid().safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
 
   const [post] = await queryPosts(supabase, user.id, { postId: id });

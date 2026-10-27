@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { MessageCircle, Pin } from "lucide-react";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { timeAgo, type Author } from "@/lib/posts";
 import { Avatar } from "@/components/Avatar";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -13,11 +13,12 @@ type Msg = { conversation_id: string; sender_id: string; body: string; created_a
 export default async function MessagesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error: err } = await searchParams;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
 
-  const { data: mine } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
-  const myRows = (mine ?? []) as { conversation_id: string; last_read_at: string }[];
+  const { data: mine } = await supabase.from("conversation_members").select("conversation_id, last_read_at, pinned_at").eq("user_id", user.id);
+  const myRows = (mine ?? []) as { conversation_id: string; last_read_at: string; pinned_at: string | null }[];
+  const pinnedAt = new Map(myRows.map((m) => [m.conversation_id, m.pinned_at]));
   const convIds = myRows.map((m) => m.conversation_id);
   const lastRead = new Map(myRows.map((m) => [m.conversation_id, m.last_read_at]));
 
@@ -41,7 +42,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
 
   const list = convIds
     .filter((id) => lastMsg.has(id))
-    .sort((a, b) => (lastMsg.get(b)!.created_at).localeCompare(lastMsg.get(a)!.created_at));
+    .sort((a, b) => (pinnedAt.get(a) ? 0 : 1) - (pinnedAt.get(b) ? 0 : 1) || (lastMsg.get(b)!.created_at).localeCompare(lastMsg.get(a)!.created_at));
 
   return (
     <>
@@ -74,6 +75,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                   </span>
                   <span className={`block truncate text-sm ${unread ? "font-medium" : "text-muted"}`}>{m.sender_id === user.id ? "You: " : ""}{m.body}</span>
                 </span>
+                {pinnedAt.get(id) && <Pin size={14} className="shrink-0 text-muted" aria-label="Pinned" />}
                 {unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-label="Unread" />}
               </Link>
             </li>

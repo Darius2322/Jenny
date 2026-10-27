@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 
 export type NewsState = { error?: string; ok?: boolean } | undefined;
 
@@ -17,7 +17,7 @@ export async function submitNews(_: NewsState, formData: FormData): Promise<News
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
   const { error } = await supabase.from("news_submissions").insert({ ...parsed.data, submitter_id: user.id, status: "pending", label: "unverified_submission" });
   if (error) {

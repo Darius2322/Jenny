@@ -63,7 +63,7 @@ Advisor note: 3 intentional WARNs (`lookup_profile`, `search_profiles`, `start_c
 - Username already taken at signup: the DB trigger assigns a temporary `user_xxxx` name instead of failing. Add a profile-setup screen (Milestone 2) to choose a final one.
 - Admin roles are provisioned server-side only (SQL / service role); no public path assigns them. The separate admin app is Milestone 6.
 - Public legal pages are honest placeholders marked "not legally reviewed". Get real Terms/Privacy reviewed for Kenyan data-protection requirements before launch.
-- Dating is disabled: `/dating` shows a "Coming soon" page only; no tables, no data collected.
+- Dating: opt-in, 18+ only (DB-enforced), tables closed to clients and reached via RPCs; mutual likes become matches and open a DM. Pause hides you; account deletion removes it. Not built or run.
 - Gossip is anonymous: the table is closed to clients; `gossip_feed/create/delete` RPCs never return the author. Staff can look up an author only via the service role when acting on a report.
 - Reposts, infinite home feed (`get_explore`), profile hub and sub menus: written, NOT built or run.
 - The logo wordmark in the standalone SVGs uses text (Inter, with fallbacks). Convert to outlines for print.
@@ -104,3 +104,5 @@ Roles: `system_owner` and `administrator` (everything, including audit log, rein
 Admin limitations: no UI to add/remove staff (use SQL), no account-deletion handling, no appeals queue, no way to restore hidden content from the UI, suspension does not sign the user out of existing sessions (it blocks posting/visibility via database rules), no private-message access by design. Enable "Auth > Attack protection" (CAPTCHA) and consider restricting the admin domain by IP/firewall.
 
 Business limitations: businesses start `pending_review` and are approved in the admin app; one business per owner in the UI, no team-member invites yet (the database supports managers), enquiries notify the team in-app only (no email yet).
+- DM: swipe right to reply, long-press for reply/copy/pin/delete, pin chats and messages. Gossip: aka set in Settings (optional), reply/pin/report. Hashtags, @mentions (notify), trending on Discover. Written, NOT built or run.
+- Speed: both Vercel projects pinned to fra1 (same region as Supabase eu-central-1); one auth lookup per request; optimistic like/repost; branded logo loader.

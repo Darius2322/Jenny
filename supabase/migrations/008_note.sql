@@ -1,0 +1,3 @@
+-- Applied live via MCP in parts: 008a_dm_pins_replies, 008b1_gossip_tables, 008b2_gossip_functions (gossip_list/gossip_post),
+-- 008c_mentions_hashtags, 008d_dating_tables, 008e1/008e2 dating functions, 009_username_available.
+-- Old gossip_feed/gossip_create from 007 remain but are unused. dating_remove was not created (migration tool cancelled it).

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { queryPosts, postsByIds } from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
 import { Avatar } from "@/components/Avatar";
@@ -21,7 +21,7 @@ export default async function ProfileTab({ params }: { params: Promise<{ tab: st
   if (!(tab in TABS)) notFound();
   const t = tab as Tab;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
 
   let posts: Awaited<ReturnType<typeof postsByIds>> = [];

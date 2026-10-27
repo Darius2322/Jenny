@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Search, Settings, FileText, Heart, Repeat2, Users, UserCheck, Bell, Store, Ghost, HeartHandshake, LogOut, ChevronRight, ExternalLink } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { logout } from "@/app/auth/actions";
 import { Avatar } from "@/components/Avatar";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Profile", robots: { index: false } }
 
 export default async function ProfileHub() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
   const { data: me } = await supabase.from("profiles").select("username, display_name, avatar_path, created_at").eq("id", user.id).single();
   if (!me) redirect("/settings");
@@ -42,7 +42,7 @@ export default async function ProfileHub() {
     ] },
     { title: "Explore", items: [
       { href: "/gossip", label: "Gossip", hint: "Anonymous", icon: Ghost },
-      { href: "/dating", label: "Dating", hint: "Coming soon", icon: HeartHandshake },
+      { href: "/dating", label: "Dating", hint: "18+", icon: HeartHandshake },
       { href: "/business", label: "My business", icon: Store },
       { href: "/notifications", label: "Notifications", icon: Bell },
     ] },

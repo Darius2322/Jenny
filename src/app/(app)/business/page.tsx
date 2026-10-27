@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Trash2, Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { setListingStatus, deleteListing, setEnquiryStatus } from "@/lib/business-actions";
 import type { Business, Listing, Enquiry } from "@/lib/business";
 import { BusinessForm } from "@/components/BusinessForm";
@@ -19,7 +19,7 @@ const statusText: Record<string, string> = {
 
 export default async function BusinessDashboard() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
 
   const { data: memberships } = await supabase.from("business_members").select("business_id").eq("user_id", user.id).limit(1);

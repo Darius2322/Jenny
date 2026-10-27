@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { BUSINESS_CATEGORIES } from "@/lib/business";
 import { uploadImage } from "@/lib/upload";
 
@@ -11,7 +11,7 @@ export type BizState = { error?: string; ok?: boolean } | undefined;
 
 async function requireUser() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
   return { supabase, user };
 }

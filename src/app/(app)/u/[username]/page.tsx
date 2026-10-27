@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin, Link as LinkIcon, Lock } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUserCached } from "@/lib/supabase/server";
 import { queryPosts, PAGE_SIZE } from "@/lib/posts";
 import { toggleFollow, toggleBlock, startConversation } from "@/lib/actions";
 import { Avatar } from "@/components/Avatar";
@@ -18,7 +18,7 @@ export default async function ProfilePage({
   const { username } = await params;
   const { before } = await searchParams;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await getUserCached();
   if (!user) return null;
 
   // RLS decides visibility: a private or blocking profile returns no row, so we show "not found".

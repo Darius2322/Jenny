@@ -18,6 +18,7 @@ export default function RegisterPage() {
         { name: "username", label: "Username", autoComplete: "username", hint: "3–30 characters: letters, numbers, underscores." },
         { name: "email", label: "Email", type: "email", autoComplete: "email" },
         { name: "password", label: "Password", type: "password", autoComplete: "new-password", hint: "At least 10 characters." },
+        { name: "confirmPassword", label: "Confirm password", type: "password", autoComplete: "new-password" },
       ]}
       footer={<p>Already have an account? <Link href="/login" className="font-semibold text-brand-dark underline dark:text-brand">Sign in</Link></p>}
     />

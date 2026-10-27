@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-redirect";
 
-export type FormState = { error?: string; message?: string } | undefined;
+export type FormState = { error?: string; message?: string; fieldErrors?: Record<string, string> } | undefined;
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address."),
@@ -17,9 +17,10 @@ const registerSchema = z.object({
   displayName: z.string().trim().min(1, "Enter your name.").max(60, "Name is too long."),
   username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,30}$/, "Username: 3–30 letters, numbers or underscores."),
   email: z.string().trim().toLowerCase().email("Enter a valid email address."),
-  password: z.string().min(10, "Use at least 10 characters.").max(128),
+  password: z.string().min(10, "Use at least 10 characters.").max(128, "Password is too long."),
+  confirmPassword: z.string().min(1, "Re-enter your password."),
   acceptTerms: z.literal("on", { errorMap: () => ({ message: "You must accept the Terms and Privacy Policy." }) }),
-});
+}).refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: "Passwords don't match." });
 
 async function siteOrigin() {
   const h = await headers();
@@ -43,10 +44,17 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
 
 export async function register(_: FormState, formData: FormData): Promise<FormState> {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) {
+    // Report every wrong field at once so the form can jump to the first one without losing anything typed.
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) { const k = String(issue.path[0] ?? ""); if (k && !fieldErrors[k]) fieldErrors[k] = issue.message; }
+    return { fieldErrors, error: "Please fix the highlighted fields." };
+  }
   const { email, password, username, displayName } = parsed.data;
 
   const supabase = await createClient();
+  const { data: free } = await supabase.rpc("username_available", { p_username: username });
+  if (free === false) return { fieldErrors: { username: "That username is already taken. Try another." }, error: "Please fix the highlighted fields." };
   // Username uniqueness is enforced by the DB unique index; if the requested name is taken the
   // signup trigger assigns a temporary "user_xxxx" name that the user changes in profile setup.
   const { error } = await supabase.auth.signUp({

@@ -2,7 +2,7 @@
  * Safety rules: only static brand assets are cached. HTML, API, auth and any personalised
  * response are NEVER cached, so one account's data can't be served to another.
  * Navigations that fail offline get the generic /offline page. */
-const VERSION = "jenny-v3";
+const VERSION = "jenny-v4";
 const STATIC_ASSETS = [
   "/offline",
   "/icons/icon-192.png",

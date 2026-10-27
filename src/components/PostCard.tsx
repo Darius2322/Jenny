@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, MessageCircle, Repeat2, Trash2, Flag } from "lucide-react";
+import { Trash2, Flag } from "lucide-react";
 import { Avatar } from "./Avatar";
-import { deletePost, toggleReaction, toggleRepost, reportContent } from "@/lib/actions";
+import { PostActions } from "./PostActions";
+import { RichText } from "./RichText";
+import { deletePost, reportContent } from "@/lib/actions";
 import { timeAgo, type PostView } from "@/lib/posts";
 
 export function PostCard({ post, viewerId, detail = false }: { post: PostView; viewerId: string; detail?: boolean }) {
@@ -28,7 +30,7 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
           </header>
 
           {/* Plain text only: React escapes it, so user content can never inject markup. */}
-          <p className={`mt-1 whitespace-pre-wrap break-words ${detail ? "text-lg" : "text-[15px]"}`}>{post.body}</p>
+          <p className={`mt-1 whitespace-pre-wrap break-words ${detail ? "text-lg" : "text-[15px]"}`}><RichText text={post.body} /></p>
 
           {post.images.map((src) => (
             <Image key={src} src={src} alt="Photo attached to this post" width={900} height={900} sizes="(max-width: 640px) 100vw, 576px"
@@ -36,24 +38,7 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
           ))}
 
           <div className="-ml-2 mt-2 flex items-center gap-1 text-sm text-muted">
-            <form action={toggleReaction}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" aria-pressed={liked} aria-label={liked ? "Remove like" : "Like"} className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-2 hover:bg-surface dark:hover:bg-white/10 ${liked ? "text-brand-dark dark:text-brand" : ""}`}>
-                <Heart size={20} aria-hidden="true" fill={liked ? "currentColor" : "none"} />
-                <span>{post.reaction_count}</span>
-              </button>
-            </form>
-            <Link href={`/post/${post.id}`} aria-label={`${post.comment_count} comments`} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-2 hover:bg-surface dark:hover:bg-white/10">
-              <MessageCircle size={20} aria-hidden="true" />
-              <span>{post.comment_count}</span>
-            </Link>
-            <form action={toggleRepost}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button type="submit" aria-pressed={post.my_repost} aria-label={post.my_repost ? "Undo repost" : "Repost"} className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-2 hover:bg-surface dark:hover:bg-white/10 ${post.my_repost ? "text-brand-dark dark:text-brand" : ""}`}>
-                <Repeat2 size={20} aria-hidden="true" />
-                <span>{post.repost_count}</span>
-              </button>
-            </form>
+            <PostActions postId={post.id} liked={liked} likes={post.reaction_count} reposted={post.my_repost} reposts={post.repost_count} comments={post.comment_count} />
             <span className="flex-1" />
             {mine ? (
               <form action={deletePost}>
