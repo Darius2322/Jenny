@@ -15,15 +15,21 @@ export function PostCard({ post, viewerId, detail = false }: { post: PostView; v
   return (
     <article className="border-b border-line px-4 py-4 dark:border-white/10">
       <div className="flex gap-3">
-        <Avatar name={author?.display_name ?? "?"} path={author?.avatar_path} size={44} />
+        {author ? (
+          <Link href={`/u/${author.username}`} aria-label={`View ${author.display_name}'s profile`} className="shrink-0 self-start">
+            <Avatar name={author.display_name} path={author.avatar_path} size={44} />
+          </Link>
+        ) : <Avatar name="?" path={null} size={44} />}
         <div className="min-w-0 flex-1">
           <header className="flex flex-wrap items-baseline gap-x-2 text-sm">
             {author ? (
-              <Link href={`/u/${author.username}`} className="font-semibold hover:underline">{author.display_name}</Link>
+              <Link href={`/u/${author.username}`} className="inline-flex min-h-[32px] items-baseline gap-x-2 py-1">
+                <span className="font-semibold hover:underline">{author.display_name}</span>
+                <span className="text-muted">@{author.username}</span>
+              </Link>
             ) : (
               <span className="font-semibold text-muted">Unavailable user</span>
             )}
-            {author && <span className="text-muted">@{author.username}</span>}
             <Link href={`/post/${post.id}`} className="text-muted hover:underline">
               <time dateTime={post.created_at}>· {timeAgo(post.created_at)}</time>{post.edited_at ? " (edited)" : ""}
             </Link>

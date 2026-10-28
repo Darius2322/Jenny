@@ -74,7 +74,7 @@ export default async function ProfilePage({
           <Avatar name={profile.display_name} path={profile.avatar_path} size={72} />
           <div className="flex gap-2">
             {isMe ? (
-              <Link href="/settings" className="btn btn-secondary">Edit profile</Link>
+              <Link href="/settings/profile" className="btn btn-secondary">Edit profile</Link>
             ) : (
               <>
                 <form action={toggleFollow}>

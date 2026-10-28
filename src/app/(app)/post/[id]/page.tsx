@@ -47,7 +47,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     const a = authors.get(c.author_id);
     return (
       <div className="flex gap-3 px-4 py-3">
-        <Avatar name={a?.display_name ?? "?"} path={a?.avatar_path} size={small ? 28 : 32} />
+        {a ? <Link href={`/u/${a.username}`} aria-label={`View ${a.display_name}'s profile`} className="shrink-0 self-start"><Avatar name={a.display_name} path={a.avatar_path} size={small ? 28 : 32} /></Link> : <Avatar name="?" path={null} size={small ? 28 : 32} />}
         <div className="min-w-0 flex-1">
           <p className="text-sm">
             {a ? <Link href={`/u/${a.username}`} className="font-semibold hover:underline">{a.display_name}</Link> : <span className="font-semibold text-muted">Unavailable user</span>}

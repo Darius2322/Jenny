@@ -1,42 +1,39 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient, getUserCached } from "@/lib/supabase/server";
-import { logout } from "@/app/auth/actions";
-import { ProfileForm } from "@/components/ProfileForm";
-import { AvatarForm } from "@/components/AvatarForm";
-import { CoverForm } from "@/components/CoverForm";
-import { GossipAliasForm } from "@/components/GossipAliasForm";
-import { DeleteAccountForm } from "@/components/DeleteAccountForm";
+import { UserRound, Bell, ShieldCheck, Palette, KeyRound, Database, ChevronRight } from "lucide-react";
+import { getUserCached } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 
+const items = [
+  { href: "/settings/profile", label: "Profile and photos", hint: "Name, bio, photo, cover, visibility", icon: UserRound },
+  { href: "/settings/notifications", label: "Notifications", hint: "Choose what alerts you get", icon: Bell },
+  { href: "/settings/privacy", label: "Privacy and safety", hint: "Blocked people, gossip aka, dating", icon: ShieldCheck },
+  { href: "/settings/appearance", label: "Appearance", hint: "Light, dark or match your phone", icon: Palette },
+  { href: "/settings/security", label: "Security", hint: "Password and sign-out everywhere", icon: KeyRound },
+  { href: "/settings/account", label: "Account and data", hint: "Download your data, delete account", icon: Database },
+] as const;
+
 export default async function SettingsPage() {
-  const supabase = await createClient();
   const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("avatar_path, cover_path, display_name, username, bio, location_text, website, interests, visibility, discoverable")
-    .eq("id", user.id).single();
-
-  const { data: deletion } = await supabase.from("account_deletion_requests").select("requested_at")
-    .eq("user_id", user.id).eq("status", "requested").maybeSingle();
-
-  const { data: gs } = await supabase.from("gossip_settings").select("alias").eq("user_id", user.id).maybeSingle();
-
   return (
     <>
-      <h1 className="px-5 pt-6 text-2xl font-extrabold">Settings</h1>
-      {profile && <AvatarForm name={profile.display_name} path={profile.avatar_path} />}
-      {profile && <CoverForm path={profile.cover_path} />}
-      {profile ? <ProfileForm profile={{ ...profile, interests: profile.interests ?? [] }} /> : <p role="alert" className="p-4 text-red-600">Couldn&apos;t load your profile.</p>}
-      <GossipAliasForm alias={(gs?.alias as string | null | undefined) ?? null} />
-      <DeleteAccountForm requestedAt={(deletion?.requested_at as string | undefined) ?? null} />
-      <div className="border-t border-line px-4 py-5 dark:border-white/10">
-        <p className="mb-3 text-sm text-muted">Signed in as {user.email}</p>
-        <form action={logout}><button type="submit" className="btn btn-secondary">Sign out</button></form>
-      </div>
+      <h1 className="px-5 pt-5 text-2xl font-extrabold">Settings</h1>
+      <p className="px-5 pt-1 text-sm text-muted">Signed in as {user.email}</p>
+      <ul className="card mx-4 mt-5 divide-y divide-line overflow-hidden dark:divide-white/10">
+        {items.map(({ href, label, hint, icon: Icon }) => (
+          <li key={href}>
+            <Link href={href} className="flex min-h-[64px] items-center gap-3 px-4 hover:bg-surface dark:hover:bg-white/10">
+              <span className="chip !h-10 !w-10 !rounded-xl"><Icon size={18} aria-hidden="true" /></span>
+              <span className="min-w-0 flex-1"><span className="block font-semibold">{label}</span><span className="block truncate text-sm text-muted">{hint}</span></span>
+              <ChevronRight size={18} className="text-muted" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="pb-6" />
     </>
   );
 }

@@ -30,11 +30,17 @@ export async function resolveReport(formData: FormData) {
 
   let authorId: string | null = null;
   if (action === "hide" || action === "remove") {
-    if (report.target_type !== "post" && report.target_type !== "comment") return; // not applicable to this target
-    const table = report.target_type === "post" ? "posts" : "comments";
-    const { data: row } = await svc.from(table).update({ status: action === "hide" ? "hidden" : "removed" }).eq("id", report.target_id).select("author_id").maybeSingle();
-    if (!row) return; // content no longer exists
-    authorId = row.author_id as string;
+    if (report.target_type === "gossip") {
+      // Gossip has no "hidden" state; both choices remove it. The author is never looked up or notified here (anonymity).
+      const { data: row } = await svc.from("gossip_posts").update({ status: "removed" }).eq("id", report.target_id).select("id").maybeSingle();
+      if (!row) return;
+    } else {
+      if (report.target_type !== "post" && report.target_type !== "comment") return; // not applicable to this target
+      const table = report.target_type === "post" ? "posts" : "comments";
+      const { data: row } = await svc.from(table).update({ status: action === "hide" ? "hidden" : "removed" }).eq("id", report.target_id).select("author_id").maybeSingle();
+      if (!row) return; // content no longer exists
+      authorId = row.author_id as string;
+    }
   }
 
   await svc.from("content_reports").update({
@@ -50,6 +56,7 @@ export async function resolveReport(formData: FormData) {
   if (authorId) await notifyModeration(authorId, action);
   await audit(staff.id, `report.${action}`, report.target_type, report.target_id, { reportId });
   revalidatePath("/reports");
+  revalidatePath(`/reports/${reportId}`);
   revalidatePath("/");
 }
 
@@ -117,6 +124,7 @@ export async function setUserStatus(formData: FormData) {
   await notifyModeration(userId, action === "suspend" ? "suspend_user" : "reinstate_user");
   await audit(staff.id, `user.${action}`, "profile", userId);
   revalidatePath("/users");
+  revalidatePath(`/users/${userId}`);
 }
 
 /**
@@ -157,4 +165,65 @@ export async function processDeletion(formData: FormData) {
     return;
   }
   revalidatePath("/deletions");
+}
+
+
+/** Hide, remove or restore a post directly (outside a report). */
+export async function setPostStatus(formData: FormData) {
+  const staff = await requireStaff(MODERATION);
+  const parsed = z.object({ postId: uuid, action: z.enum(["hide", "remove", "restore"]) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { postId, action } = parsed.data;
+  if (action === "restore" && !ADMINS.includes(staff.role)) return;
+  const svc = createServiceClient();
+  const { data: row } = await svc.from("posts").update({ status: action === "hide" ? "hidden" : action === "remove" ? "removed" : "published" }).eq("id", postId).select("author_id").maybeSingle();
+  if (!row) return;
+  if (action !== "restore") await notifyModeration(row.author_id as string, action);
+  await audit(staff.id, `post.${action}`, "post", postId);
+  revalidatePath("/posts");
+}
+
+/** Remove or restore gossip. Never touches or reveals the author. */
+export async function setGossipStatus(formData: FormData) {
+  const staff = await requireStaff(MODERATION);
+  const parsed = z.object({ gossipId: uuid, action: z.enum(["remove", "restore"]) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { gossipId, action } = parsed.data;
+  if (action === "restore" && !ADMINS.includes(staff.role)) return;
+  const { data } = await createServiceClient().from("gossip_posts").update({ status: action === "remove" ? "removed" : "published" }).eq("id", gossipId).select("id").maybeSingle();
+  if (!data) return;
+  await audit(staff.id, `gossip.${action}`, "gossip", gossipId);
+  revalidatePath("/gossip");
+  revalidatePath(`/gossip/${gossipId}`);
+}
+
+const STAFF_ROLES = ["administrator", "moderator", "support"] as const;
+
+/** Grant a staff role to an existing member. System owner only. */
+export async function addStaff(formData: FormData) {
+  const staff = await requireStaff(["system_owner"]);
+  const parsed = z.object({ username: z.string().trim().toLowerCase().min(3).max(30), role: z.enum(STAFF_ROLES) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const svc = createServiceClient();
+  const { data: target } = await svc.from("profiles").select("id").eq("username", parsed.data.username).maybeSingle();
+  if (!target) return;
+  const { data: existing } = await svc.from("admin_roles").select("role").eq("user_id", target.id).maybeSingle();
+  if (existing?.role === "system_owner") return;
+  const { error } = await svc.from("admin_roles").upsert({ user_id: target.id, role: parsed.data.role });
+  if (error) return;
+  await audit(staff.id, "staff.set_role", "user", target.id, { role: parsed.data.role });
+  revalidatePath("/staff");
+}
+
+export async function removeStaff(formData: FormData) {
+  const staff = await requireStaff(["system_owner"]);
+  const parsed = z.object({ userId: uuid }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success || parsed.data.userId === staff.id) return;
+  const svc = createServiceClient();
+  const { data: existing } = await svc.from("admin_roles").select("role").eq("user_id", parsed.data.userId).maybeSingle();
+  if (!existing || existing.role === "system_owner") return;
+  const { error } = await svc.from("admin_roles").delete().eq("user_id", parsed.data.userId);
+  if (error) return;
+  await audit(staff.id, "staff.remove_role", "user", parsed.data.userId);
+  revalidatePath("/staff");
 }

@@ -67,7 +67,7 @@ export function GossipFeed({ rows, myAlias }: { rows: GossipRow[]; myAlias: stri
           placeholder={reply ? "Write your reply…" : "Spill it anonymously…"} className="field min-h-[80px] resize-none py-3" />
         <div className="mt-3 flex items-center justify-between gap-3">
           <span className="min-w-0 text-xs text-muted">
-            Posting as <strong>{myAlias ?? "Anonymous"}</strong>. <Link href="/settings#gossip" className="font-semibold text-brand-dark underline dark:text-brand">Set your aka</Link>
+            Posting as <strong>{myAlias ?? "Anonymous"}</strong>. <Link href="/settings/privacy#gossip" className="font-semibold text-brand-dark underline dark:text-brand">Set your aka</Link>
           </span>
           <button type="submit" disabled={pending || text.trim().length === 0} className="btn btn-primary shrink-0">{pending ? "Posting…" : reply ? "Reply" : "Post"}</button>
         </div>

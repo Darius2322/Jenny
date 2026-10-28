@@ -15,7 +15,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Server Actions receive image uploads (max 5 MB each, enforced again in lib/upload.ts and by the storage bucket).
-  experimental: { serverActions: { bodySizeLimit: "6mb" } },
+  // staleTimes: back/forward and revisits within 15s reuse the already-loaded page, so navigation feels instant.
+  experimental: { serverActions: { bodySizeLimit: "6mb" }, staleTimes: { dynamic: 15, static: 180 } },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" },

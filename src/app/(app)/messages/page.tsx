@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MessageCircle, Pin } from "lucide-react";
+import { Check, CheckCheck, MessageCircle, Pin } from "lucide-react";
+import { listStamp } from "@/lib/chat-time";
 import { createClient, getUserCached } from "@/lib/supabase/server";
-import { timeAgo, type Author } from "@/lib/posts";
+import type { Author } from "@/lib/posts";
 import { Avatar } from "@/components/Avatar";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
@@ -24,15 +25,20 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
 
   const others = new Map<string, string>(); // conversation -> other user id
   const lastMsg = new Map<string, Msg>();
+  const otherRead = new Map<string, string>();
+  const unreadCount = new Map<string, number>();
   const people = new Map<string, Author>();
 
   if (convIds.length) {
     const [{ data: members }, { data: msgs }] = await Promise.all([
-      supabase.from("conversation_members").select("conversation_id, user_id").in("conversation_id", convIds).neq("user_id", user.id),
+      supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds).neq("user_id", user.id),
       supabase.from("messages").select("conversation_id, sender_id, body, created_at").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(200),
     ]);
-    (members ?? []).forEach((m: { conversation_id: string; user_id: string }) => others.set(m.conversation_id, m.user_id));
-    (msgs ?? []).forEach((m: Msg) => { if (!lastMsg.has(m.conversation_id)) lastMsg.set(m.conversation_id, m); });
+    (members ?? []).forEach((m: { conversation_id: string; user_id: string; last_read_at: string }) => { others.set(m.conversation_id, m.user_id); otherRead.set(m.conversation_id, m.last_read_at); });
+    (msgs ?? []).forEach((m: Msg) => {
+      if (!lastMsg.has(m.conversation_id)) lastMsg.set(m.conversation_id, m);
+      if (m.sender_id !== user.id && m.created_at > (lastRead.get(m.conversation_id) ?? "")) unreadCount.set(m.conversation_id, (unreadCount.get(m.conversation_id) ?? 0) + 1);
+    });
     const ids = [...new Set(others.values())];
     if (ids.length) {
       const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_path").in("id", ids);
@@ -71,12 +77,15 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className={`truncate ${unread ? "font-bold" : "font-semibold"}`}>{p?.display_name ?? "Unavailable user"}</span>
-                    <span className="shrink-0 text-xs text-muted">{timeAgo(m.created_at)}</span>
+                    <span className={`shrink-0 text-xs ${unread ? "font-semibold text-brand-dark dark:text-brand" : "text-muted"}`}>{listStamp(m.created_at)}</span>
                   </span>
-                  <span className={`block truncate text-sm ${unread ? "font-medium" : "text-muted"}`}>{m.sender_id === user.id ? "You: " : ""}{m.body}</span>
+                  <span className={`flex items-center gap-1 text-sm ${unread ? "font-medium" : "text-muted"}`}>
+                    {m.sender_id === user.id && (m.created_at <= (otherRead.get(id) ?? "") ? <CheckCheck size={16} className="shrink-0 text-sky-600" aria-label="Seen" /> : <Check size={15} className="shrink-0" aria-label="Sent" />)}
+                    <span className="truncate">{m.body}</span>
+                  </span>
                 </span>
                 {pinnedAt.get(id) && <Pin size={14} className="shrink-0 text-muted" aria-label="Pinned" />}
-                {unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-label="Unread" />}
+                {unread && <span className="inline-flex min-w-[22px] shrink-0 items-center justify-center rounded-full bg-brand-dark px-1.5 py-0.5 text-xs font-bold text-white" aria-label={`${unreadCount.get(id) ?? 1} unread`}>{unreadCount.get(id) ?? 1}</span>}
               </Link>
             </li>
           );

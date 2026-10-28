@@ -9,11 +9,11 @@ const LIGHT = "M487 190 L482 190 L480 192 L480 411 L479 412 L479 426 L476 442 L4
 const W = 323;
 const H = 385;
 
-export function JennyEmblem({ size = 32, className }: { size?: number; className?: string }) {
+export function JennyEmblem({ size = 32, className, draw = false }: { size?: number; className?: string; draw?: boolean }) {
   return (
     <svg width={(size * W) / H} height={size} viewBox="220 190 323 385" aria-hidden="true" className={className}>
-      <path d={DARK} fill="#126F5A" />
-      <path d={LIGHT} fill="#1FCB77" />
+      <path d={DARK} fill="#126F5A" className={draw ? "j-dark" : undefined} stroke={draw ? "#126F5A" : undefined} strokeWidth={draw ? 5 : undefined} strokeLinejoin="round" pathLength={draw ? 1 : undefined} />
+      <path d={LIGHT} fill="#1FCB77" className={draw ? "j-light" : undefined} stroke={draw ? "#1FCB77" : undefined} strokeWidth={draw ? 5 : undefined} strokeLinejoin="round" pathLength={draw ? 1 : undefined} />
     </svg>
   );
 }

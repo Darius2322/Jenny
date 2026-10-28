@@ -1,29 +1,37 @@
-import Link from "next/link";
 import { requireStaff, ADMINS } from "@/lib/staff";
+import { createServiceClient } from "@/lib/supabase-service";
 import { staffLogout } from "@/lib/auth-actions";
-import { Logo } from "@/components/Logo";
+import { AdminShell, type NavGroup } from "@/components/AdminShell";
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
   const isAdmin = ADMINS.includes(staff.role);
-  const links = [
-    { href: "/", label: "Overview" }, { href: "/reports", label: "Reports" }, { href: "/businesses", label: "Businesses" },
-    { href: "/news", label: "News" }, { href: "/users", label: "Users" }, ...(isAdmin ? [{ href: "/deletions", label: "Deletions" }, { href: "/audit", label: "Audit log" }] : []),
+  const svc = createServiceClient();
+  const head = { count: "exact" as const, head: true };
+  const [rep, biz, news, del] = await Promise.all([
+    svc.from("content_reports").select("id", head).in("status", ["open", "reviewing"]),
+    svc.from("businesses").select("id", head).eq("status", "pending_review"),
+    svc.from("news_submissions").select("id", head).eq("status", "pending"),
+    isAdmin ? svc.from("account_deletion_requests").select("id", head).eq("status", "requested") : Promise.resolve({ count: 0 }),
+  ]);
+  const groups: NavGroup[] = [
+    { title: "Dashboard", items: [{ href: "/", label: "Overview", icon: "overview" }] },
+    { title: "Moderation", items: [
+      { href: "/reports", label: "Reports", icon: "reports", badge: rep.count ?? 0 },
+      { href: "/posts", label: "Posts", icon: "posts" },
+      { href: "/gossip", label: "Gossip", icon: "gossip" },
+    ] },
+    { title: "Community", items: [
+      { href: "/users", label: "Users", icon: "users" },
+      { href: "/businesses", label: "Businesses", icon: "businesses", badge: biz.count ?? 0 },
+      { href: "/news", label: "News", icon: "news", badge: news.count ?? 0 },
+      { href: "/dating", label: "Dating", icon: "dating" },
+    ] },
+    ...(isAdmin ? [{ title: "Administration", items: [
+      { href: "/deletions", label: "Deletions", icon: "deletions" as const, badge: del.count ?? 0 },
+      { href: "/audit", label: "Audit log", icon: "audit" as const },
+      { href: "/staff", label: "Staff", icon: "staff" as const },
+    ] }] : []),
   ];
-  return (
-    <div className="min-h-dvh">
-      <header className="border-b border-line dark:border-white/10">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Logo size={28} />
-          <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-semibold text-white dark:bg-white dark:text-ink">Admin</span>
-          <nav aria-label="Admin" className="flex flex-1 flex-wrap gap-1">
-            {links.map((l) => <Link key={l.href} href={l.href} className="rounded-full px-4 py-2 text-sm font-semibold text-ink/80 hover:bg-brand-tint hover:text-brand-deep dark:text-slate-300 dark:hover:bg-white/10">{l.label}</Link>)}
-          </nav>
-          <span className="text-xs text-muted">{staff.email} · {staff.role.replace("_", " ")}</span>
-          <form action={staffLogout}><button type="submit" className="btn btn-secondary !min-h-[36px] !px-3">Sign out</button></form>
-        </div>
-      </header>
-      <main id="main" className="mx-auto max-w-5xl px-4 py-6">{children}</main>
-    </div>
-  );
+  return <AdminShell groups={groups} email={staff.email ?? "staff"} role={staff.role} logout={staffLogout}>{children}</AdminShell>;
 }

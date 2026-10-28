@@ -13,7 +13,7 @@ export default async function ProfileHub() {
   const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");
   const { data: me } = await supabase.from("profiles").select("username, display_name, avatar_path, created_at").eq("id", user.id).single();
-  if (!me) redirect("/settings");
+  if (!me) redirect("/settings/profile");
 
   const head = { count: "exact", head: true } as const;
   const [posts, likes, reposts, followers, following] = await Promise.all([
@@ -47,7 +47,7 @@ export default async function ProfileHub() {
       { href: "/notifications", label: "Notifications", icon: Bell },
     ] },
     { title: "Account", items: [
-      { href: "/settings", label: "Settings", hint: "Profile, photo, privacy", icon: Settings },
+      { href: "/settings", label: "Settings", hint: "Profile, alerts, privacy, security", icon: Settings },
       { href: `/u/${me.username}`, label: "View public profile", icon: ExternalLink },
     ] },
   ];

@@ -140,6 +140,7 @@ export async function sendMessage(_: ActionState, formData: FormData): Promise<A
     if (error.message.includes("violates row-level security")) return { error: "You can't message this person." };
     return { error: friendly(error.message) };
   }
+  revalidatePath("/messages"); // so the DM list isn't stale when you go back
   return { ok: true };
 }
 
@@ -448,4 +449,47 @@ export async function swipeDating(userId: string, like: boolean): Promise<{ ok: 
   const { data, error } = await supabase.rpc("dating_swipe", { p_to: id.data, p_like: like });
   if (error) return { ok: false, matched: false };
   return { ok: true, matched: data === true };
+}
+
+export async function pinMatch(userId: string, pin: boolean): Promise<boolean> {
+  const id = uuid.safeParse(userId);
+  if (!id.success) return false;
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("dating_pin", { p_other: id.data, p_pin: pin });
+  return !error;
+}
+
+// ---------- Settings ----------
+const PREF_KEYS = ["notify_follows", "notify_reactions", "notify_comments", "notify_messages", "notify_business_enquiries", "notify_marketing"] as const;
+
+export async function saveNotificationPrefs(_: ActionState, formData: FormData): Promise<ActionState> {
+  const { supabase, user } = await requireUser();
+  const patch: Record<string, boolean> = {};
+  for (const k of PREF_KEYS) patch[k] = formData.get(k) === "on";
+  const { error } = await supabase.from("user_preferences").update(patch).eq("user_id", user.id);
+  return error ? { error: friendly(error.message) } : { ok: true };
+}
+
+export async function saveTheme(theme: string): Promise<boolean> {
+  const t = z.enum(["system", "light", "dark"]).safeParse(theme);
+  if (!t.success) return false;
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("user_preferences").update({ theme: t.data }).eq("user_id", user.id);
+  return !error;
+}
+
+export async function changePassword(_: ActionState, formData: FormData): Promise<ActionState> {
+  const pw = z.string().min(10, "Use at least 10 characters.").max(128, "Password is too long.").safeParse(formData.get("password"));
+  if (!pw.success) return { error: pw.error.issues[0]?.message };
+  if (formData.get("password") !== formData.get("confirm")) return { error: "Passwords don't match." };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.auth.updateUser({ password: pw.data });
+  if (error) return { error: "Couldn't change your password. Sign in again and retry." };
+  return { ok: true };
+}
+
+export async function signOutEverywhere() {
+  const { supabase } = await requireUser();
+  await supabase.auth.signOut({ scope: "global" });
+  redirect("/login");
 }

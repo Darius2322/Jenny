@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, CornerUpLeft, Pin, PinOff, SendHorizonal, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, Clock, Copy, CornerUpLeft, Pin, PinOff, SendHorizonal, Trash2, X } from "lucide-react";
+import { clock, dayKey, dayLabel } from "@/lib/chat-time";
 import { sendMessage, deleteMessage, togglePinMessage, togglePinChat, type ActionState } from "@/lib/actions";
 import { Avatar } from "./Avatar";
 import { GestureItem } from "./GestureItem";
@@ -14,13 +15,12 @@ type Person = { name: string; username: string | null; avatar: string | null };
 type Pending = ChatMsg & { pending: true };
 
 type Props = {
-  conversationId: string; viewerId: string; messages: ChatMsg[]; pinnedIds: string[]; chatPinned: boolean; person: Person;
+  conversationId: string; viewerId: string; messages: ChatMsg[]; pinnedIds: string[]; chatPinned: boolean; person: Person; otherReadAt: string | null;
 };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
 const snippet = (t: string) => (t.length > 90 ? `${t.slice(0, 90)}…` : t);
 
-export function ChatThread({ conversationId, viewerId, messages, pinnedIds, chatPinned, person }: Props) {
+export function ChatThread({ conversationId, viewerId, messages, pinnedIds, chatPinned, person, otherReadAt }: Props) {
   const router = useRouter();
   const [state, action, sending] = useActionState<ActionState, FormData>(sendMessage, undefined);
   const [pendingMsgs, setPendingMsgs] = useState<Pending[]>([]);
@@ -95,12 +95,17 @@ export function ChatThread({ conversationId, viewerId, messages, pinnedIds, chat
 
       <ol className="flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-3 py-4" aria-label="Messages">
         {all.length === 0 && <li className="py-10 text-center text-muted">Say hello 👋</li>}
-        {all.map((m) => {
+        {all.map((m, i) => {
           const mine = m.sender_id === viewerId;
+          const prev = all[i - 1];
+          const newDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
+          const isPending = m.id.startsWith("tmp-");
+          const seen = mine && !isPending && !!otherReadAt && otherReadAt >= m.created_at;
           const quoted = m.reply_to_id ? byId.get(m.reply_to_id) : undefined;
           const pinned = pins.includes(m.id);
           return (
-            <li key={m.id} id={`m-${m.id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+            <li key={m.id} id={`m-${m.id}`} className={`flex flex-wrap ${mine ? "justify-end" : "justify-start"}`}>
+              {newDay && <div className="my-2 flex w-full justify-center"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-muted shadow-sm dark:bg-white/10">{dayLabel(m.created_at)}</span></div>}
               <GestureItem onReply={() => setReply(m)} onMenu={() => !m.id.startsWith("tmp-") && setSheet(m)} className="max-w-[82%]">
                 <div className={`rounded-2xl px-3.5 py-2 text-[15px] shadow-sm ${mine ? "rounded-br-md bg-brand text-ink" : "rounded-bl-md bg-white dark:bg-white/10"} ${m.id.startsWith("tmp-") ? "opacity-70" : ""}`}>
                   {m.reply_to_id && (
@@ -110,7 +115,8 @@ export function ChatThread({ conversationId, viewerId, messages, pinnedIds, chat
                   )}
                   <p className="whitespace-pre-wrap break-words">{m.body}</p>
                   <span className={`mt-0.5 flex items-center justify-end gap-1 text-[11px] ${mine ? "text-ink/70" : "text-muted"}`}>
-                    {pinned && <Pin size={11} aria-label="Pinned" />}<time dateTime={m.created_at}>{time(m.created_at)}</time>
+                    {pinned && <Pin size={11} aria-label="Pinned" />}<time dateTime={m.created_at}>{clock(m.created_at)}</time>
+                    {mine && (isPending ? <Clock size={13} aria-label="Sending" /> : seen ? <CheckCheck size={16} className="text-sky-600" aria-label="Seen" /> : <Check size={15} aria-label="Sent" />)}
                   </span>
                 </div>
               </GestureItem>

@@ -17,13 +17,14 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
 
   // RLS: non-participants get no rows, so this is a 404 for them.
   const [{ data: members }, { data: rows }, { data: pins }] = await Promise.all([
-    supabase.from("conversation_members").select("user_id, pinned_at").eq("conversation_id", id),
+    supabase.from("conversation_members").select("user_id, pinned_at, last_read_at").eq("conversation_id", id),
     supabase.from("messages").select("id, sender_id, body, created_at, reply_to_id").eq("conversation_id", id).order("created_at", { ascending: false }).limit(60),
     supabase.from("message_pins").select("message_id").eq("conversation_id", id).order("created_at", { ascending: false }),
   ]);
   const mine = (members ?? []).find((m: { user_id: string }) => m.user_id === user.id) as { pinned_at: string | null } | undefined;
   if (!mine) notFound();
-  const otherId = (members ?? []).find((m: { user_id: string }) => m.user_id !== user.id)?.user_id as string | undefined;
+  const otherRow = (members ?? []).find((m: { user_id: string }) => m.user_id !== user.id) as { user_id: string; last_read_at: string | null } | undefined;
+  const otherId = otherRow?.user_id;
 
   const [{ data: person }] = await Promise.all([
     otherId ? supabase.from("profiles").select("username, display_name, avatar_path").eq("id", otherId).maybeSingle() : Promise.resolve({ data: null }),
@@ -36,7 +37,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
       <AutoRefresh seconds={5} />
       <ChatThread
         conversationId={id} viewerId={user.id} messages={messages}
-        pinnedIds={(pins ?? []).map((p: { message_id: string }) => p.message_id)} chatPinned={!!mine.pinned_at}
+        pinnedIds={(pins ?? []).map((p: { message_id: string }) => p.message_id)} chatPinned={!!mine.pinned_at} otherReadAt={otherRow?.last_read_at ?? null}
         person={{ name: person?.display_name ?? "Unavailable user", username: person?.username ?? null, avatar: person?.avatar_path ?? null }}
       />
     </>
