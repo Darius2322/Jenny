@@ -59,3 +59,5 @@
 .j-dark, .j-light { stroke-dasharray: 1; stroke-dashoffset: 1; animation: jDraw 1.9s cubic-bezier(.65,0,.35,1) infinite; }
 .j-light { animation-delay: .22s; }
 @media (prefers-reduced-motion: reduce) { .j-dark, .j-light { animation: none; stroke-dashoffset: 0; fill-opacity: 1; } }
+
+.field[aria-invalid="true"], input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.15); }

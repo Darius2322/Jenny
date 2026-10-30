@@ -12,7 +12,7 @@ type N = { id: string; actor_id: string | null; type: string; post_id: string | 
 const verb: Record<string, string> = {
   follow: "started following you", mention: "mentioned you in a post", match: "matched with you. Say hello in DM", follow_request: "wants to follow you", reaction: "liked your post",
   comment: "commented on your post", reply: "replied to your comment", message: "sent you a message",
-  business_enquiry: "sent an enquiry to your business", moderation: "A moderation decision was made", security: "Security notice",
+  business_enquiry: "sent an enquiry to your business", gossip_mention: "Someone tagged you in gossip", super_like: "Someone Super Liked you in Dating", announcement: "Announcement from Jenny", ad_review: "Your ad application was reviewed", moderation: "A moderation decision was made", security: "Security notice",
 };
 
 export default async function NotificationsPage() {
@@ -41,7 +41,7 @@ export default async function NotificationsPage() {
       <ul className="mt-3">
         {items.map((n) => {
           const a = n.actor_id ? actors.get(n.actor_id) : undefined;
-          const href = n.type === "match" ? "/dating" : n.type === "business_enquiry" ? "/business" : n.type === "message" ? "/messages" : n.post_id ? `/post/${n.post_id}` : a ? `/u/${a.username}` : "/notifications";
+          const href = n.type === "match" || n.type === "super_like" ? "/dating" : n.type === "gossip_mention" ? "/gossip" : n.type === "ad_review" ? "/ads" : n.type === "business_enquiry" ? "/business" : n.type === "message" ? "/messages" : n.post_id ? `/post/${n.post_id}` : a ? `/u/${a.username}` : "/notifications";
           return (
             <li key={n.id} className={`flex items-center gap-3 border-b border-line px-4 py-3 dark:border-white/10 ${n.read_at ? "" : "bg-brand/5"}`}>
               <Avatar name={a?.display_name ?? "J"} path={a?.avatar_path} size={40} />

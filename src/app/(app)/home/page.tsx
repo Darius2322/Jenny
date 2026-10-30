@@ -4,6 +4,7 @@ import { createClient, getUserCached } from "@/lib/supabase/server";
 import { loadFeed, type FeedKind } from "@/lib/feed-actions";
 import { InfiniteFeed } from "@/components/InfiniteFeed";
 import { Composer } from "@/components/Composer";
+import { AdSlot } from "@/components/AdSlot";
 
 export const metadata: Metadata = { title: "Home", robots: { index: false } };
 
@@ -34,6 +35,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <Link href="/discover" className="btn btn-primary mt-5">Find people</Link>
         </div>
       )}
+      <AdSlot placement="feed" />
       <InfiniteFeed key={kind} kind={kind} initial={page.posts} initialHasMore={page.hasMore} viewerId={user.id} />
     </>
   );

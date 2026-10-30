@@ -7,7 +7,7 @@ import { createClient, getUserCached } from "@/lib/supabase/server";
 import { BUSINESS_CATEGORIES } from "@/lib/business";
 import { uploadImage } from "@/lib/upload";
 
-export type BizState = { error?: string; ok?: boolean } | undefined;
+export type BizState = { error?: string; field?: string; ok?: boolean } | undefined;
 
 async function requireUser() {
   const supabase = await createClient();
@@ -43,7 +43,7 @@ const createSchema = z.object({
 
 export async function createBusiness(_: BizState, formData: FormData): Promise<BizState> {
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, field: String(parsed.error.issues[0]?.path[0] ?? "") };
   const { supabase, user } = await requireUser();
   // No .select() here: the owner membership row is added by a trigger after the insert.
   const { error } = await supabase.from("businesses").insert({ ...parsed.data, created_by: user.id });
@@ -56,7 +56,7 @@ export async function updateBusiness(_: BizState, formData: FormData): Promise<B
   const id = z.string().uuid().safeParse(formData.get("businessId"));
   const parsed = z.object(profileFields).safeParse(Object.fromEntries(formData));
   if (!id.success) return { error: "Invalid business." };
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, field: String(parsed.error.issues[0]?.path[0] ?? "") };
   const { supabase } = await requireUser();
   const { error } = await supabase.from("businesses").update(parsed.data).eq("id", id.data);
   if (error) return { error: friendly(error.message) };
@@ -75,7 +75,7 @@ const listingSchema = z.object({
 
 export async function addListing(_: BizState, formData: FormData): Promise<BizState> {
   const parsed = listingSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, field: String(parsed.error.issues[0]?.path[0] ?? "") };
   const { businessId, ...rest } = parsed.data;
   const { supabase } = await requireUser();
   const { error } = await supabase.from("business_listings").insert({

@@ -1,0 +1,1 @@
+-- Applied live via MCP: 011a_gossip_groups_tables, 011b_gossip_list_excludes_groups, 011c/011d group functions.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/lib/useKeepForm";
 import { updateProfile, type ActionState } from "@/lib/actions";
 
 type P = {
@@ -9,9 +9,9 @@ type P = {
 };
 
 export function ProfileForm({ profile }: { profile: P }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(updateProfile, undefined);
+  const [state, onSubmit, pending] = useKeepForm<ActionState>(updateProfile);
   return (
-    <form action={action} className="space-y-4 px-4 py-5">
+    <form onSubmit={onSubmit} className="space-y-4 px-4 py-5">
       <div>
         <label htmlFor="display_name" className="label">Name</label>
         <input id="display_name" name="display_name" defaultValue={profile.display_name} maxLength={60} required className="field" />

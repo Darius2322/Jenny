@@ -7,9 +7,10 @@ import { createClient, getUserCached } from "@/lib/supabase/server";
 import { uploadImage } from "@/lib/upload";
 import { extractTokens } from "@/lib/tags";
 
-export type ActionState = { error?: string; ok?: boolean; postId?: string } | undefined;
+export type ActionState = { error?: string; field?: string; ok?: boolean; postId?: string } | undefined;
 
 function friendly(message: string | undefined): string {
+  if (message?.includes("last_admin")) return "You're the only admin. Make someone else an admin before leaving.";
   if (!message) return "Something went wrong. Please try again.";
   if (message.includes("rate_limit_exceeded")) return "You're doing that too fast. Please wait a few minutes.";
   if (message.includes("violates row-level security")) return "You don't have permission to do that.";
@@ -28,7 +29,7 @@ const bodySchema = z.string().trim().min(1, "Write something first.").max(2000, 
 
 export async function createPost(_: ActionState, formData: FormData): Promise<ActionState> {
   const body = bodySchema.safeParse(formData.get("body"));
-  if (!body.success) return { error: body.error.issues[0]?.message };
+  if (!body.success) return { error: body.error.issues[0]?.message, field: "body" };
   const { supabase, user } = await requireUser();
 
   let uploaded: { path: string; mime: string } | null = null;
@@ -129,7 +130,7 @@ export async function sendMessage(_: ActionState, formData: FormData): Promise<A
   const conversationId = uuid.safeParse(formData.get("conversationId"));
   const body = z.string().trim().min(1, "Write a message first.").max(2000, "Messages can be up to 2000 characters.").safeParse(formData.get("body"));
   if (!conversationId.success) return { error: "Invalid conversation." };
-  if (!body.success) return { error: body.error.issues[0]?.message };
+  if (!body.success) return { error: body.error.issues[0]?.message, field: "body" };
   const { supabase, user } = await requireUser();
   const replyRaw = formData.get("replyToId");
   const reply = typeof replyRaw === "string" && replyRaw ? uuid.safeParse(replyRaw) : null;
@@ -177,7 +178,7 @@ export async function addComment(_: ActionState, formData: FormData): Promise<Ac
   const postId = uuid.safeParse(formData.get("postId"));
   const body = z.string().trim().min(1, "Write a comment first.").max(1000, "Comments can be up to 1000 characters.").safeParse(formData.get("body"));
   if (!postId.success) return { error: "Invalid post." };
-  if (!body.success) return { error: body.error.issues[0]?.message };
+  if (!body.success) return { error: body.error.issues[0]?.message, field: "body" };
   const parentRaw = formData.get("parentId");
   const parent = typeof parentRaw === "string" && parentRaw ? uuid.safeParse(parentRaw) : null;
   if (parent && !parent.success) return { error: "Invalid reply target." };
@@ -186,6 +187,8 @@ export async function addComment(_: ActionState, formData: FormData): Promise<Ac
     post_id: postId.data, author_id: user.id, body: body.data, parent_id: parent?.success ? parent.data : null,
   });
   if (error) return { error: friendly(error.message) };
+  const { mentions } = extractTokens(body.data);
+  if (mentions.length) await supabase.rpc("notify_mentions", { p_post: postId.data, p_mentions: mentions });
   revalidatePath(`/post/${postId.data}`);
   return { ok: true };
 }
@@ -249,7 +252,7 @@ const profileSchema = z.object({
 
 export async function updateProfile(_: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = profileSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, field: String(parsed.error.issues[0]?.path[0] ?? "") };
   const d = parsed.data;
   const interests = (d.interests ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean).slice(0, 15);
   const { supabase, user } = await requireUser();
@@ -270,7 +273,7 @@ export async function markAllNotificationsRead() {
 }
 
 export async function requestAccountDeletion(_: ActionState, formData: FormData): Promise<ActionState> {
-  if (formData.get("confirm") !== "DELETE") return { error: "Type DELETE to confirm." };
+  if (formData.get("confirm") !== "DELETE") return { error: "Type DELETE to confirm.", field: "confirm" };
   const reason = z.string().trim().max(500).optional().safeParse(formData.get("reason") || undefined);
   const { supabase, user } = await requireUser();
   const { error } = await supabase.from("account_deletion_requests").insert({
@@ -306,12 +309,17 @@ const aliasSchema = z.string().trim().min(2, "Aka must be 2–24 characters.").m
 
 export async function createGossip(_: ActionState, formData: FormData): Promise<ActionState> {
   const body = z.string().trim().min(1, "Write something first.").max(1000, "Gossip can be up to 1000 characters.").safeParse(formData.get("body"));
-  if (!body.success) return { error: body.error.issues[0]?.message };
+  if (!body.success) return { error: body.error.issues[0]?.message, field: "body" };
   const replyRaw = formData.get("replyTo");
   const reply = typeof replyRaw === "string" && replyRaw ? uuid.safeParse(replyRaw) : null;
+  const groupRaw = formData.get("groupId");
+  const group = typeof groupRaw === "string" && groupRaw ? uuid.safeParse(groupRaw) : null;
+  if (group && !group.success) return { error: "Invalid group." };
   const { supabase } = await requireUser();
-  const { error } = await supabase.rpc("gossip_post", { p_body: body.data, p_alias: null, p_reply_to: reply?.success ? reply.data : null });
-  if (error) return { error: friendly(error.message) };
+  const { error } = group?.success
+    ? await supabase.rpc("gossip_group_post", { p_group: group.data, p_body: body.data, p_reply_to: reply?.success ? reply.data : null })
+    : await supabase.rpc("gossip_post", { p_body: body.data, p_alias: null, p_reply_to: reply?.success ? reply.data : null });
+  if (error) return { error: error.message.includes("not_a_member") ? "Join this group to post." : friendly(error.message) };
   return { ok: true };
 }
 
@@ -417,21 +425,21 @@ export async function togglePinChat(conversationId: string, pin: boolean): Promi
 const GENDERS = ["woman", "man", "nonbinary"] as const;
 
 export async function saveDatingProfile(_: ActionState, formData: FormData): Promise<ActionState> {
-  if (formData.get("adult") !== "on") return { error: "Confirm that you are 18 or older to continue." };
+  if (formData.get("adult") !== "on") return { error: "Confirm that you are 18 or older to continue.", field: "adult" };
   const d = Number(formData.get("day")), m = Number(formData.get("month")), y = Number(formData.get("year"));
-  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return { error: "Enter your date of birth as day, month and year." };
+  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return { error: "Enter your date of birth as day, month and year.", field: "day" };
   const dob = new Date(Date.UTC(y, m - 1, d));
-  if (dob.getUTCFullYear() !== y || dob.getUTCMonth() !== m - 1 || dob.getUTCDate() !== d) return { error: "That date doesn't exist. Check your date of birth." };
+  if (dob.getUTCFullYear() !== y || dob.getUTCMonth() !== m - 1 || dob.getUTCDate() !== d) return { error: "That date doesn't exist. Check your date of birth.", field: "day" };
   const cutoff = new Date(); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 18);
-  if (dob > cutoff) return { error: "Dating on Jenny is for people aged 18 and over." };
+  if (dob > cutoff) return { error: "Dating on Jenny is for people aged 18 and over.", field: "year" };
   const gender = z.enum(GENDERS).safeParse(formData.get("gender"));
-  if (!gender.success) return { error: "Choose how you identify." };
+  if (!gender.success) return { error: "Choose how you identify.", field: "gender" };
   const looking = z.array(z.enum(GENDERS)).min(1, "Choose who you'd like to meet.").safeParse(formData.getAll("lookingFor"));
-  if (!looking.success) return { error: looking.error.issues[0]?.message };
+  if (!looking.success) return { error: looking.error.issues[0]?.message, field: "lookingFor" };
   const bio = z.string().trim().max(300, "About me can be up to 300 characters.").safeParse(formData.get("bio") ?? "");
-  if (!bio.success) return { error: bio.error.issues[0]?.message };
+  if (!bio.success) return { error: bio.error.issues[0]?.message, field: "bio" };
   const region = z.string().trim().max(60).safeParse(formData.get("region") ?? "");
-  if (!region.success) return { error: "Area is too long." };
+  if (!region.success) return { error: "Area is too long.", field: "region" };
   const { supabase } = await requireUser();
   const iso = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const { error } = await supabase.rpc("dating_save", {
@@ -480,8 +488,8 @@ export async function saveTheme(theme: string): Promise<boolean> {
 
 export async function changePassword(_: ActionState, formData: FormData): Promise<ActionState> {
   const pw = z.string().min(10, "Use at least 10 characters.").max(128, "Password is too long.").safeParse(formData.get("password"));
-  if (!pw.success) return { error: pw.error.issues[0]?.message };
-  if (formData.get("password") !== formData.get("confirm")) return { error: "Passwords don't match." };
+  if (!pw.success) return { error: pw.error.issues[0]?.message, field: "password" };
+  if (formData.get("password") !== formData.get("confirm")) return { error: "Passwords don't match.", field: "confirm" };
   const { supabase } = await requireUser();
   const { error } = await supabase.auth.updateUser({ password: pw.data });
   if (error) return { error: "Couldn't change your password. Sign in again and retry." };
@@ -492,4 +500,147 @@ export async function signOutEverywhere() {
   const { supabase } = await requireUser();
   await supabase.auth.signOut({ scope: "global" });
   redirect("/login");
+}
+
+
+// ---------- Gossip groups ----------
+export async function createGossipGroup(_: ActionState, formData: FormData): Promise<ActionState> {
+  const name = z.string().trim().min(3, "Group name must be 3–40 characters.").max(40, "Group name must be 3–40 characters.").safeParse(formData.get("name"));
+  if (!name.success) return { error: name.error.issues[0]?.message, field: "name" };
+  const desc = z.string().trim().max(200, "Description can be up to 200 characters.").safeParse(formData.get("description") ?? "");
+  if (!desc.success) return { error: desc.error.issues[0]?.message, field: "description" };
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("gossip_group_create", { p_name: name.data, p_description: desc.data, p_private: formData.get("private") === "on" });
+  if (error || typeof data !== "string") return { error: friendly(error?.message) };
+  redirect(`/gossip/groups/${data}`);
+}
+
+export async function joinGossipGroup(formData: FormData) {
+  const id = uuid.safeParse(formData.get("groupId"));
+  if (!id.success) return;
+  const { supabase } = await requireUser();
+  const { data } = await supabase.rpc("gossip_group_join", { p_group: id.data, p_code: null });
+  redirect(data === true ? `/gossip/groups/${id.data}` : "/gossip/groups?error=join");
+}
+
+export async function joinGossipGroupByCode(_: ActionState, formData: FormData): Promise<ActionState> {
+  const code = z.string().trim().min(4, "Enter the invite code.").max(20).safeParse(formData.get("code"));
+  if (!code.success) return { error: code.error.issues[0]?.message, field: "code" };
+  const { supabase } = await requireUser();
+  const { data } = await supabase.rpc("gossip_group_join_code", { p_code: code.data });
+  if (typeof data !== "string") return { error: "That code didn't work, or you can't join this group." };
+  redirect(`/gossip/groups/${data}`);
+}
+
+export async function leaveGossipGroup(formData: FormData) {
+  const id = uuid.safeParse(formData.get("groupId"));
+  if (!id.success) return;
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("gossip_group_leave", { p_group: id.data });
+  redirect(error ? `/gossip/groups/${id.data}?error=${error.message.includes("last_admin") ? "last_admin" : "leave"}` : "/gossip/groups");
+}
+
+export async function gossipGroupMod(postId: string, action: "remove_post" | "make_admin" | "remove_admin" | "ban_author"): Promise<boolean> {
+  const id = uuid.safeParse(postId);
+  if (!id.success) return false;
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("gossip_group_mod", { p_post: id.data, p_action: action });
+  return !error && data === true;
+}
+
+// ---------- Mentions, gossip v2, dating v2 ----------
+export async function searchUsers(q: string): Promise<{ username: string; display_name: string }[]> {
+  const term = q.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30);
+  if (term.length < 1) return [];
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("profiles").select("username, display_name").eq("status", "active").ilike("username", `${term}%`).limit(5);
+  return (data ?? []) as { username: string; display_name: string }[];
+}
+
+const TOPICS = ["love", "campus", "work", "money", "entertainment", "sports", "politics", "random"];
+
+export async function createGossip2(_: ActionState, formData: FormData): Promise<ActionState> {
+  const body = z.string().trim().min(1, "Write something first.").max(1000, "Gossip can be up to 1000 characters.").safeParse(formData.get("body"));
+  if (!body.success) return { error: body.error.issues[0]?.message, field: "body" };
+  const replyRaw = formData.get("replyTo");
+  const reply = typeof replyRaw === "string" && replyRaw ? uuid.safeParse(replyRaw) : null;
+  const groupRaw = formData.get("groupId");
+  const group = typeof groupRaw === "string" && groupRaw ? uuid.safeParse(groupRaw) : null;
+  if (group && !group.success) return { error: "Invalid group." };
+  const topicRaw = String(formData.get("topic") ?? "");
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("gossip_post2", {
+    p_body: body.data, p_alias: null, p_reply_to: reply?.success ? reply.data : null,
+    p_topic: TOPICS.includes(topicRaw) ? topicRaw : null, p_group: group?.success ? group.data : null,
+    p_mentions: extractTokens(body.data).mentions,
+  });
+  if (error) return { error: error.message.includes("not_a_member") ? "Join this group to post." : friendly(error.message) };
+  return { ok: true };
+}
+
+export async function reactGossip(id: string, kind: string, on: boolean): Promise<boolean> {
+  if (!uuid.safeParse(id).success || !["fire", "laugh", "wow", "sad"].includes(kind)) return false;
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("gossip_react", { p_id: id, p_kind: kind, p_on: on });
+  return !error;
+}
+
+export async function saveDatingProfile2(_: ActionState, formData: FormData): Promise<ActionState> {
+  const base = await saveDatingChecks(formData);
+  if ("error" in base) return base;
+  const prompt = z.string().trim().max(80).safeParse(formData.get("prompt") ?? "");
+  const answer = z.string().trim().max(200, "Your answer can be up to 200 characters.").safeParse(formData.get("answer") ?? "");
+  if (!answer.success) return { error: answer.error.issues[0]?.message, field: "answer" };
+  const amin = Math.max(18, Math.min(99, Number(formData.get("ageMin")) || 18));
+  const amax = Math.max(amin, Math.min(99, Number(formData.get("ageMax")) || 99));
+  const hobbies = String(formData.get("hobbies") ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean).slice(0, 8);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("dating_save2", {
+    p_dob: base.iso, p_gender: base.gender, p_looking_for: base.looking, p_bio: base.bio, p_region: base.region, p_active: formData.get("hidden") !== "on",
+    p_prompt: prompt.success ? prompt.data : "", p_answer: answer.data, p_age_min: amin, p_age_max: amax, p_hobbies: hobbies,
+  });
+  if (error) return { error: error.message.includes("must_be_adult") ? "Dating on Jenny is for people aged 18 and over." : friendly(error.message) };
+  revalidatePath("/dating");
+  return { ok: true };
+}
+
+async function saveDatingChecks(formData: FormData): Promise<{ error: string; field?: string } | { iso: string; gender: string; looking: string[]; bio: string; region: string }> {
+  if (formData.get("adult") !== "on") return { error: "Confirm that you are 18 or older to continue.", field: "adult" };
+  const d = Number(formData.get("day")), m = Number(formData.get("month")), y = Number(formData.get("year"));
+  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(y) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return { error: "Enter your date of birth as day, month and year.", field: "day" };
+  const dob = new Date(Date.UTC(y, m - 1, d));
+  if (dob.getUTCFullYear() !== y || dob.getUTCMonth() !== m - 1 || dob.getUTCDate() !== d) return { error: "That date doesn't exist. Check your date of birth.", field: "day" };
+  const cutoff = new Date(); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 18);
+  if (dob > cutoff) return { error: "Dating on Jenny is for people aged 18 and over.", field: "year" };
+  const gender = z.enum(GENDERS).safeParse(formData.get("gender"));
+  if (!gender.success) return { error: "Choose how you identify.", field: "gender" };
+  const looking = z.array(z.enum(GENDERS)).min(1, "Choose who you'd like to meet.").safeParse(formData.getAll("lookingFor"));
+  if (!looking.success) return { error: looking.error.issues[0]?.message ?? "Choose who you'd like to meet.", field: "lookingFor" };
+  const bio = z.string().trim().max(300, "About me can be up to 300 characters.").safeParse(formData.get("bio") ?? "");
+  if (!bio.success) return { error: bio.error.issues[0]?.message ?? "Bio too long.", field: "bio" };
+  const region = z.string().trim().max(60).safeParse(formData.get("region") ?? "");
+  if (!region.success) return { error: "Area is too long.", field: "region" };
+  return { iso: `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, gender: gender.data, looking: looking.data, bio: bio.data, region: region.data };
+}
+
+export async function swipeDating2(to: string, like: boolean, superLike = false): Promise<{ ok: boolean; matched?: boolean; error?: string }> {
+  if (!uuid.safeParse(to).success) return { ok: false };
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("dating_swipe2", { p_to: to, p_like: like, p_super: superLike });
+  if (error) return { ok: false, error: error.message.includes("super_limit") ? "You've used your 3 Super Likes for today." : friendly(error.message) };
+  return { ok: true, matched: data === true };
+}
+
+export async function rewindDating(): Promise<boolean> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase.rpc("dating_rewind");
+  revalidatePath("/dating");
+  return typeof data === "string";
+}
+
+export async function removeDatingData(): Promise<boolean> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("dating_scrub");
+  revalidatePath("/dating");
+  return !error;
 }

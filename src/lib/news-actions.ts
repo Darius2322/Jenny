@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient, getUserCached } from "@/lib/supabase/server";
 
-export type NewsState = { error?: string; ok?: boolean } | undefined;
+export type NewsState = { error?: string; field?: string; ok?: boolean } | undefined;
 
 const schema = z.object({
   title: z.string().trim().min(5, "Title must be at least 5 characters.").max(160),
@@ -15,7 +15,7 @@ const schema = z.object({
 /** Anything submitted is reviewed by a person before it can appear. Nothing is auto-published. */
 export async function submitNews(_: NewsState, formData: FormData): Promise<NewsState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message, field: String(parsed.error.issues[0]?.path[0] ?? "") };
   const supabase = await createClient();
   const { data: { user } } = await getUserCached();
   if (!user) redirect("/login");

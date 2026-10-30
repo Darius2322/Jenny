@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/lib/useKeepForm";
 import { createBusiness, updateBusiness, type BizState } from "@/lib/business-actions";
 import { BUSINESS_CATEGORIES, type Business } from "@/lib/business";
 
 export function BusinessForm({ business }: { business?: Business }) {
-  const [state, action, pending] = useActionState<BizState, FormData>(business ? updateBusiness : createBusiness, undefined);
+  const [state, onSubmit, pending] = useKeepForm<BizState>(business ? updateBusiness : createBusiness);
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4">
       {business && <input type="hidden" name="businessId" value={business.id} />}
       {!business && (
         <div>

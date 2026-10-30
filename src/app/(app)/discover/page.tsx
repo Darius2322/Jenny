@@ -7,6 +7,7 @@ import { attachAuthors } from "@/lib/posts";
 import { PostCard } from "@/components/PostCard";
 import { Avatar } from "@/components/Avatar";
 import { DiscoverTabs } from "@/components/DiscoverTabs";
+import { AdSlot } from "@/components/AdSlot";
 
 export const metadata: Metadata = { title: "Discover", robots: { index: false } };
 
@@ -39,6 +40,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
     <>
       <h1 className="px-5 pt-6 text-2xl font-extrabold">Discover</h1>
       <DiscoverTabs active="people" />
+      {!searching && <AdSlot placement="discover" />}
       <form action="/discover" role="search" className="flex gap-2 border-b border-line px-4 py-4 dark:border-white/10">
         <label htmlFor="q" className="sr-only">Search people or hashtags</label>
         <input id="q" name="q" type="search" defaultValue={query} placeholder="Search people or #hashtags" className="field" autoComplete="off" />

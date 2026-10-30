@@ -1,3 +1,4 @@
+import { RichText } from "@/components/RichText";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -53,7 +54,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             {a ? <Link href={`/u/${a.username}`} className="font-semibold hover:underline">{a.display_name}</Link> : <span className="font-semibold text-muted">Unavailable user</span>}
             <span className="text-muted"> · {timeAgo(c.created_at)}</span>
           </p>
-          <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px]">{c.body}</p>
+          <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px]"><RichText text={c.body} /></p>
         </div>
         {c.author_id === user!.id && (
           <form action={deleteComment}>

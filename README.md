@@ -108,3 +108,7 @@ Business limitations: businesses start `pending_review` and are approved in the 
 - Speed: both Vercel projects pinned to fra1 (same region as Supabase eu-central-1); one auth lookup per request; optimistic like/repost; branded logo loader.
 - Admin portal: sidebar nav; overview dashboard; users list + detail; report detail with history; posts and gossip moderation (gossip author reveal is admin-only, only for reported posts, and audited); dating aggregate stats; staff roles (system owner). Written, NOT built or run.
 - Settings split into Profile, Notifications, Privacy, Appearance, Security, Account (data download + deletion). DM shows day headings and sent/seen ticks ("seen" = the other person opened the chat; there is no separate delivered state). Dating matches can be pinned.
+- Gossip groups: public or private (invite code); group admins remove posts, make authors admins or remove them, all by post, never seeing who wrote it. Branded auth emails in supabase/email-templates (paste into the Supabase dashboard; custom SMTP needed for a custom sender).
+
+## Added in this round (written, NOT yet built/run)
+Login by username or email (needs `LOGIN_LOOKUP_SECRET` env var, already set on the `jenny` Vercel project), forms that keep typed data and jump to the wrong field, @mention suggestions (posts, comments, gossip), ads (apply at /ads, review in admin), admin Action center, gossip reactions/topics/hot, dating hobbies/prompts/age range/area filter/super like/undo/data removal.

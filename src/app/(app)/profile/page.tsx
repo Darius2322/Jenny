@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search, Settings, FileText, Heart, Repeat2, Users, UserCheck, Bell, Store, Ghost, HeartHandshake, LogOut, ChevronRight, ExternalLink } from "lucide-react";
+import { Search, Settings, FileText, Heart, Repeat2, Users, UserCheck, Bell, Store, Ghost, HeartHandshake, LogOut, Megaphone, ChevronRight, ExternalLink } from "lucide-react";
 import { createClient, getUserCached } from "@/lib/supabase/server";
 import { logout } from "@/app/auth/actions";
 import { Avatar } from "@/components/Avatar";
@@ -44,6 +44,7 @@ export default async function ProfileHub() {
       { href: "/gossip", label: "Gossip", hint: "Anonymous", icon: Ghost },
       { href: "/dating", label: "Dating", hint: "18+", icon: HeartHandshake },
       { href: "/business", label: "My business", icon: Store },
+      { href: "/ads", label: "Advertise", hint: "Apply for an ad", icon: Megaphone },
       { href: "/notifications", label: "Notifications", icon: Bell },
     ] },
     { title: "Account", items: [

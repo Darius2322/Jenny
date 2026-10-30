@@ -1,16 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useKeepForm } from "@/lib/useKeepForm";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { createPost, addComment, type ActionState } from "@/lib/actions";
 import { ImagePicker } from "./ImagePicker";
+import { MentionBox } from "./MentionBox";
 
 type Props = { mode?: "post" | "comment"; postId?: string; parentId?: string; placeholder?: string; max?: number };
 
 export function Composer({ mode = "post", postId, parentId, placeholder, max }: Props) {
   const limit = max ?? (mode === "post" ? 2000 : 1000);
-  const [state, action, pending] = useActionState<ActionState, FormData>(mode === "post" ? createPost : addComment, undefined);
+  const [state, onSubmit, pending] = useKeepForm<ActionState>(mode === "post" ? createPost : addComment);
   const [text, setText] = useState("");
   const [resetKey, setResetKey] = useState(0);
   const [done, setDone] = useState(false);
@@ -30,12 +32,12 @@ export function Composer({ mode = "post", postId, parentId, placeholder, max }: 
   const empty = text.trim().length === 0;
 
   return (
-    <form action={action} className="border-b border-line px-4 py-4 dark:border-white/10" onChange={() => done && setDone(false)}>
+    <form onSubmit={onSubmit} className="border-b border-line px-4 py-4 dark:border-white/10" onChange={() => done && setDone(false)}>
       {postId && <input type="hidden" name="postId" value={postId} />}
       {parentId && <input type="hidden" name="parentId" value={parentId} />}
       <label htmlFor={id} className="sr-only">{label}</label>
-      <textarea id={id} name="body" rows={mode === "post" ? 3 : 2} maxLength={limit} required
-        placeholder={placeholder ?? label} value={text} onChange={(e) => setText(e.target.value)}
+      <MentionBox id={id} name="body" rows={mode === "post" ? 3 : 2} maxLength={limit} required
+        placeholder={placeholder ?? label} value={text} onChange={setText}
         className="field min-h-[80px] resize-none py-3" />
       {mode === "post" && <div className="mt-3"><ImagePicker name="image" maxMB={5} resetKey={resetKey} /></div>}
       <div className="mt-3 flex items-center justify-between gap-3">

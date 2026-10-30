@@ -1,15 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useKeepForm } from "@/lib/useKeepForm";
 import { addListing, type BizState } from "@/lib/business-actions";
 
 export function ListingForm({ businessId }: { businessId: string }) {
-  const [state, action, pending] = useActionState<BizState, FormData>(addListing, undefined);
+  const [state, onSubmit, pending] = useKeepForm<BizState>(addListing);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state?.ok) ref.current?.reset(); }, [state]);
 
   return (
-    <form ref={ref} action={action} className="space-y-3 rounded-xl border border-line p-4 dark:border-white/10">
+    <form ref={ref} onSubmit={onSubmit} className="space-y-3 rounded-xl border border-line p-4 dark:border-white/10">
       <input type="hidden" name="businessId" value={businessId} />
       <h3 className="font-semibold">Add a product or service</h3>
       <div>

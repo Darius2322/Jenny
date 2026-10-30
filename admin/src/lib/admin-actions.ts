@@ -227,3 +227,77 @@ export async function removeStaff(formData: FormData) {
   await audit(staff.id, "staff.remove_role", "user", parsed.data.userId);
   revalidatePath("/staff");
 }
+
+// ---------- Ads review ----------
+export async function reviewAd(formData: FormData) {
+  const staff = await requireStaff(MODERATION);
+  const parsed = z.object({ adId: uuid, action: z.enum(["approve", "reject", "pause", "end", "resume"]), note, days: z.coerce.number().int().min(1).max(365).optional() }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { adId, action, days } = parsed.data;
+  const status = { approve: "approved", resume: "approved", reject: "rejected", pause: "paused", end: "ended" }[action];
+  const svc = createServiceClient();
+  const patch: Record<string, unknown> = { status, admin_note: parsed.data.note };
+  if (action === "approve") { patch.starts_at = new Date().toISOString(); patch.ends_at = new Date(Date.now() + (days ?? 30) * 86400000).toISOString(); }
+  const { data: ad } = await svc.from("ads").update(patch).eq("id", adId).select("advertiser_id").maybeSingle();
+  if (!ad) return;
+  if (action === "approve" || action === "reject") await svc.from("notifications").insert({ recipient_id: ad.advertiser_id, type: "ad_review", data: { action } });
+  await audit(staff.id, `ad.${action}`, "ad", adId);
+  revalidatePath("/ads");
+}
+
+// ---------- Action center ----------
+const kinds = ["post", "comment", "gossip", "gossip_group", "business", "ad"] as const;
+
+export async function removeContent(formData: FormData): Promise<void> {
+  const staff = await requireStaff(MODERATION);
+  const parsed = z.object({ kind: z.enum(kinds), id: uuid, note }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { kind, id } = parsed.data;
+  const svc = createServiceClient();
+  let ok = false;
+  if (kind === "post" || kind === "comment") {
+    const { data } = await svc.from(kind === "post" ? "posts" : "comments").update({ status: "removed" }).eq("id", id).select("author_id").maybeSingle();
+    ok = !!data; if (data) await notifyModeration(data.author_id as string, "remove");
+  } else if (kind === "gossip") {
+    const { data } = await svc.from("gossip_posts").update({ status: "removed" }).eq("id", id).select("id").maybeSingle(); ok = !!data;
+  } else if (kind === "gossip_group") {
+    const { data } = await svc.from("gossip_groups").update({ status: "closed" }).eq("id", id).select("id").maybeSingle(); ok = !!data;
+  } else if (kind === "business") {
+    const { data } = await svc.from("businesses").update({ status: "suspended" }).eq("id", id).select("id").maybeSingle(); ok = !!data;
+  } else {
+    const { data } = await svc.from("ads").update({ status: "ended" }).eq("id", id).select("id").maybeSingle(); ok = !!data;
+  }
+  if (ok) await audit(staff.id, `action.remove_${kind}`, kind, id, { note: parsed.data.note });
+  revalidatePath("/actions");
+}
+
+/** Suspend / reinstate / clear dating data, looked up by @username. */
+export async function userAction(formData: FormData): Promise<void> {
+  const staff = await requireStaff(MODERATION);
+  const parsed = z.object({ username: z.string().trim().toLowerCase().replace(/^@/, "").pipe(z.string().regex(/^[a-z0-9_]{3,30}$/)), action: z.enum(["suspend", "reinstate", "clear_dating", "force_signout"]), note }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { action } = parsed.data;
+  if ((action === "reinstate" || action === "force_signout") && !ADMINS.includes(staff.role)) return;
+  const svc = createServiceClient();
+  const { data: p } = await svc.from("profiles").select("id").eq("username", parsed.data.username).maybeSingle();
+  if (!p || p.id === staff.id) return;
+  const { data: isStaff } = await svc.from("admin_roles").select("user_id").eq("user_id", p.id).maybeSingle();
+  if (isStaff) return;
+  if (action === "suspend" || action === "reinstate") await svc.from("profiles").update({ status: action === "suspend" ? "suspended" : "active" }).eq("id", p.id);
+  else if (action === "clear_dating") await svc.from("dating_profiles").update({ active: false, bio: null, region: null, prompt: null, answer: null, hobbies: [] }).eq("user_id", p.id);
+  else await svc.auth.admin.signOut(p.id as string, "global").catch(() => undefined);
+  await audit(staff.id, `action.${action}`, "profile", p.id as string, { note: parsed.data.note });
+  revalidatePath("/actions");
+}
+
+export async function announce(formData: FormData): Promise<void> {
+  const staff = await requireStaff(ADMINS);
+  const parsed = z.object({ message: z.string().trim().min(5).max(200) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const svc = createServiceClient();
+  const { data } = await svc.from("profiles").select("id").eq("status", "active").limit(5000);
+  const rows = (data ?? []).map((r) => ({ recipient_id: r.id as string, type: "announcement", data: { message: parsed.data.message } }));
+  for (let i = 0; i < rows.length; i += 500) await svc.from("notifications").insert(rows.slice(i, i + 500));
+  await audit(staff.id, "action.announce", "broadcast", staff.id, { recipients: rows.length });
+  revalidatePath("/actions");
+}

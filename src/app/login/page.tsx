@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       hidden={{ next: safeNext(sp.next) }}
       notice={sp.error === "link" ? "That link has expired or was already used. Please try again." : undefined}
       fields={[
-        { name: "email", label: "Email", type: "email", autoComplete: "email" },
+        { name: "identifier", label: "Email or username", type: "text", autoComplete: "username" },
         { name: "password", label: "Password", type: "password", autoComplete: "current-password" },
       ]}
       footer={

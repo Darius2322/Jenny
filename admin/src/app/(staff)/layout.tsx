@@ -8,15 +8,17 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const isAdmin = ADMINS.includes(staff.role);
   const svc = createServiceClient();
   const head = { count: "exact" as const, head: true };
-  const [rep, biz, news, del] = await Promise.all([
+  const [rep, biz, news, del, ads] = await Promise.all([
     svc.from("content_reports").select("id", head).in("status", ["open", "reviewing"]),
     svc.from("businesses").select("id", head).eq("status", "pending_review"),
     svc.from("news_submissions").select("id", head).eq("status", "pending"),
     isAdmin ? svc.from("account_deletion_requests").select("id", head).eq("status", "requested") : Promise.resolve({ count: 0 }),
+    svc.from("ads").select("id", head).eq("status", "pending"),
   ]);
   const groups: NavGroup[] = [
     { title: "Dashboard", items: [{ href: "/", label: "Overview", icon: "overview" }] },
     { title: "Moderation", items: [
+      { href: "/actions", label: "Action center", icon: "actions" },
       { href: "/reports", label: "Reports", icon: "reports", badge: rep.count ?? 0 },
       { href: "/posts", label: "Posts", icon: "posts" },
       { href: "/gossip", label: "Gossip", icon: "gossip" },
@@ -26,6 +28,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       { href: "/businesses", label: "Businesses", icon: "businesses", badge: biz.count ?? 0 },
       { href: "/news", label: "News", icon: "news", badge: news.count ?? 0 },
       { href: "/dating", label: "Dating", icon: "dating" },
+      { href: "/ads", label: "Ads", icon: "ads", badge: ads.count ?? 0 },
     ] },
     ...(isAdmin ? [{ title: "Administration", items: [
       { href: "/deletions", label: "Deletions", icon: "deletions" as const, badge: del.count ?? 0 },

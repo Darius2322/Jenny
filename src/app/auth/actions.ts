@@ -9,7 +9,7 @@ import { safeNext } from "@/lib/safe-redirect";
 export type FormState = { error?: string; message?: string; fieldErrors?: Record<string, string> } | undefined;
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  identifier: z.string().trim().toLowerCase().min(1, "Enter your email or username.").max(254),
   password: z.string().min(1, "Enter your password."),
 });
 
@@ -31,13 +31,25 @@ async function siteOrigin() {
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const i of parsed.error.issues) { const k = String(i.path[0] ?? ""); if (k && !fieldErrors[k]) fieldErrors[k] = i.message; }
+    return { fieldErrors, error: "Please fix the highlighted fields." };
+  }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  let email = parsed.data.identifier;
+  if (!email.includes("@")) {
+    // Username → email, resolved server-side with a secret so the browser can never enumerate emails.
+    const { data } = await supabase.rpc("login_email", { p_username: email.replace(/^@/, ""), p_secret: process.env.LOGIN_LOOKUP_SECRET ?? "" });
+    email = typeof data === "string" ? data : "";
+  }
+  const { error } = email
+    ? await supabase.auth.signInWithPassword({ email, password: parsed.data.password })
+    : { error: true };
   if (error) {
-    // One generic message: don't reveal whether the account exists.
-    return { error: "Incorrect email or password, or the email has not been verified yet." };
+    // One generic message: don't reveal whether the account exists. Keep what was typed.
+    return { error: "Incorrect username/email or password, or the email has not been verified yet." };
   }
   redirect(safeNext(formData.get("next")));
 }

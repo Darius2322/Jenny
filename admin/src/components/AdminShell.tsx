@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Flag, Users, Store, Newspaper, Trash2, ScrollText, FileText, Ghost, HeartHandshake, ShieldCheck, Menu, X, LogOut } from "lucide-react";
+import { LayoutDashboard, Flag, Users, Store, Newspaper, Trash2, ScrollText, FileText, Ghost, HeartHandshake, ShieldCheck, Megaphone, Zap, Menu, X, LogOut } from "lucide-react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 
-const ICONS = { overview: LayoutDashboard, reports: Flag, users: Users, businesses: Store, news: Newspaper, deletions: Trash2, audit: ScrollText, posts: FileText, gossip: Ghost, dating: HeartHandshake, staff: ShieldCheck } as const;
+const ICONS = { overview: LayoutDashboard, reports: Flag, users: Users, businesses: Store, news: Newspaper, deletions: Trash2, audit: ScrollText, posts: FileText, gossip: Ghost, dating: HeartHandshake, staff: ShieldCheck, ads: Megaphone, actions: Zap } as const;
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number };
 export type NavGroup = { title: string; items: NavItem[] };
 

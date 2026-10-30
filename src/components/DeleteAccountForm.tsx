@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/lib/useKeepForm";
 import { requestAccountDeletion, cancelAccountDeletion, type ActionState } from "@/lib/actions";
 
 export function DeleteAccountForm({ requestedAt }: { requestedAt: string | null }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(requestAccountDeletion, undefined);
+  const [state, onSubmit, pending] = useKeepForm<ActionState>(requestAccountDeletion);
   if (requestedAt) {
     return (
       <section aria-labelledby="delete-heading" className="border-t border-line px-4 py-5 dark:border-white/10">
@@ -23,7 +23,7 @@ export function DeleteAccountForm({ requestedAt }: { requestedAt: string | null 
       <p className="mt-1 text-sm text-muted">This asks our team to permanently remove your account and content. It is not instant, and you can cancel until it has been processed.</p>
       <details className="mt-3">
         <summary className="cursor-pointer text-sm font-semibold text-red-600 dark:text-red-400">Request deletion</summary>
-        <form action={action} className="mt-3 space-y-3">
+        <form onSubmit={onSubmit} className="mt-3 space-y-3">
           <div>
             <label htmlFor="reason" className="label">Reason (optional)</label>
             <textarea id="reason" name="reason" rows={2} maxLength={500} className="field py-3" />
